@@ -1,0 +1,55 @@
+{
+  // LLM 提供商配置
+  "provider": {
+    "deepseek": {
+      "name": "DeepSeek",
+      "base_url": "https://api.deepseek.com/v1",
+      "api_key": "{env:DEEPSEEK_API_KEY}",
+      "models": {
+        "deepseek-chat": {
+          "name": "DeepSeek V3",
+          "limit": { "context": 64000, "output": 8192 }
+        },
+        "deepseek-reasoner": {
+          "name": "DeepSeek R1",
+          "limit": { "context": 64000, "output": 8192 }
+        }
+      }
+    }
+  },
+
+  // Agent 行为
+  "agent": {
+    "system_prompt": "你是一个智能助手。",
+    "default_model": "deepseek-chat",
+    "streaming": true
+  },
+
+  // MCP Server 配置（可选）
+  "mcp": {
+    // "serena": {
+    //   "type": "local",
+    //   "command": "serena",
+    //   "args": ["start-mcp-server", "--project-from-cwd"],
+    //   "enabled": false
+    // },
+    // "rag": {
+    //   "type": "local",
+    //   "command": "uvx",
+    //   "args": ["nb_agentic_rag"],
+    //   "env": { "NB_RAG_API_KEY": "sk-xxx" },
+    //   "enabled": false
+    // }
+  },
+
+  // 审批规则
+  "approval": {
+    "dangerous_tools": [],
+    "auto_approve": false
+  },
+
+  // 会话存储
+  "session": {
+    "db_path": ""  // 空 = 默认 ~/.nb_agent/sessions.db
+  }
+}

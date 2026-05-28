@@ -1,0 +1,679 @@
+/* nb_agent TUI — Modern Dark Theme */
+
+Screen {
+    background: #1a1b2e;
+    layout: vertical;
+}
+
+Header {
+    background: #0d0e1a;
+    color: #00d4aa;
+}
+
+Footer {
+    background: #0d0e1a;
+    color: #6b7394;
+}
+
+Footer > .footer--key {
+    background: #252742;
+    color: #00d4aa;
+}
+
+/* ====== 主内容区 ====== */
+#main-area {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#chat-panel {
+    width: 1fr;
+    border: solid #2a2d4a;
+    padding: 0 1;
+    scrollbar-size-vertical: 1;
+    scrollbar-color: #00d4aa;
+    scrollbar-color-hover: #00ffc8;
+    background: #12132a;
+}
+
+/* ====== 右侧信息面板 ====== */
+#tool-panel {
+    width: 38;
+    border: solid #2a2d4a;
+    padding: 0 1;
+    background: #0f1025;
+}
+
+#section-tokens {
+    height: auto;
+    max-height: 5;
+    padding: 0 0 1 0;
+    color: #ffd93d;
+}
+
+#section-models-title {
+    height: auto;
+    max-height: 2;
+    color: #4d96ff;
+}
+
+#section-models-list {
+    height: 1fr;
+    min-height: 5;
+    border-bottom: solid #252742;
+    scrollbar-size-vertical: 1;
+    scrollbar-color: #4d96ff;
+    background: #0f1025;
+}
+
+#section-models-list > .option-list--option-highlighted {
+    background: #00897b;
+    color: #e0f7fa;
+}
+
+#section-models-list > .option-list--option-hover {
+    background: #1a3a4a;
+}
+
+#section-mcp-title {
+    height: auto;
+    max-height: 2;
+    color: #ff922b;
+    padding: 1 0 0 0;
+}
+
+#section-mcp-list {
+    height: auto;
+    max-height: 8;
+    border-bottom: solid #252742;
+    scrollbar-size-vertical: 1;
+    scrollbar-color: #ff922b;
+    background: #0f1025;
+}
+
+#section-mcp-list > .option-list--option-highlighted {
+    background: #3a2a1a;
+    color: #ffd93d;
+}
+
+#section-mcp-list > .option-list--option-hover {
+    background: #2a1f14;
+}
+
+#section-tools-title {
+    height: auto;
+    max-height: 2;
+    color: #6bcb77;
+    padding: 1 0 0 0;
+}
+
+#section-tools-scroll {
+    height: 1fr;
+    min-height: 5;
+    scrollbar-size-vertical: 1;
+}
+
+/* ====== 底部输入区 ====== */
+#user-input {
+    height: 4;
+    margin: 0 1;
+    border: round #3a3d5a;
+    background: #12132a;
+    color: #e0e0e0;
+    scrollbar-size-vertical: 1;
+    scrollbar-color: #00d4aa;
+}
+
+#user-input:focus {
+    border: round #00d4aa;
+}
+
+#user-input.expanded {
+    height: 14;
+}
+
+/* ====== 模型选择弹窗 ====== */
+ModelSelectScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#model-dialog {
+    width: 70;
+    max-height: 80%;
+    border: thick #00d4aa;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#model-title {
+    text-align: center;
+    width: 100%;
+    height: 3;
+    color: #00d4aa;
+}
+
+#model-list {
+    height: 1fr;
+    width: 100%;
+    background: #12132a;
+}
+
+#model-list > .option-list--option-highlighted {
+    background: #00897b;
+    color: #e0f7fa;
+}
+
+/* ====== 会话选择弹窗 ====== */
+SessionSelectScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#session-dialog {
+    width: 70;
+    max-height: 80%;
+    border: thick #ff922b;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#session-title {
+    text-align: center;
+    width: 100%;
+    height: 3;
+    color: #ff922b;
+}
+
+#session-list {
+    height: 1fr;
+    width: 100%;
+    background: #12132a;
+}
+
+#session-list > .option-list--option-highlighted {
+    background: #00897b;
+    color: #e0f7fa;
+}
+
+/* ====== 工具详情弹窗 ====== */
+ToolDetailScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#tool-detail-dialog {
+    width: 90%;
+    max-width: 120;
+    max-height: 80%;
+    border: thick #6bcb77;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#tool-detail-content {
+    width: 100%;
+}
+
+/* ====== 帮助弹窗 ====== */
+HelpScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#help-dialog {
+    width: 80%;
+    max-width: 100;
+    max-height: 80%;
+    border: thick #4d96ff;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#help-content {
+    width: 100%;
+}
+
+/* ====== 工具审批弹窗 ====== */
+ToolApprovalScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#approval-dialog {
+    width: 70%;
+    max-width: 90;
+    max-height: 60%;
+    border: thick #ff6b6b;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#approval-title {
+    text-align: center;
+    width: 100%;
+    height: 2;
+}
+
+#approval-tool {
+    text-align: center;
+    width: 100%;
+    height: 2;
+}
+
+#approval-args-label {
+    height: 1;
+}
+
+#approval-args-scroll {
+    height: 1fr;
+    min-height: 3;
+    max-height: 15;
+    border: solid #2a2d4a;
+    background: #12132a;
+    padding: 0 1;
+    scrollbar-size-vertical: 1;
+}
+
+#approval-footer {
+    text-align: center;
+    height: 2;
+    margin-top: 1;
+}
+
+/* ====== AI 回答跑马灯 + 计时器 ====== */
+#ai-status-row {
+    height: 1;
+    width: 100%;
+}
+
+#ai-status-bar {
+    width: 1fr;
+    height: 1;
+    background: #0a0015;
+    text-align: left;
+    overflow: hidden;
+}
+
+#ai-timer {
+    width: auto;
+    min-width: 10;
+    height: 1;
+    background: #1a0030;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* ====== Skills 列表弹窗 ====== */
+SkillListScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#skill-dialog {
+    width: 80;
+    max-height: 80%;
+    border: thick #a78bfa;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#skill-title {
+    text-align: center;
+    width: 100%;
+    height: 3;
+    color: #a78bfa;
+}
+
+#skill-list {
+    height: 1fr;
+    width: 100%;
+    background: #12132a;
+}
+
+#skill-list > .option-list--option-highlighted {
+    background: #1b5e20;
+    color: #e8f5e9;
+    text-style: bold;
+}
+
+#skill-list > .option-list--option-hover {
+    background: #2e7d32;
+    color: #c8e6c9;
+}
+
+#skill-buttons {
+    height: auto;
+    width: 100%;
+    align: center middle;
+    padding-top: 1;
+}
+
+#skill-buttons Button {
+    margin: 0 1;
+    min-width: 12;
+}
+
+#btn-skill-view {
+    background: #2a3a5a;
+    color: #8ab4f8;
+    border: tall #4a6a9a;
+}
+#btn-skill-view:hover {
+    background: #3a4a6a;
+}
+
+#btn-skill-help {
+    background: #3a3020;
+    color: #ffa726;
+    border: tall #6a5a30;
+}
+#btn-skill-help:hover {
+    background: #4a4030;
+}
+
+#btn-skill-back {
+    background: #2a2a3a;
+    color: #9e9e9e;
+    border: tall #4a4a5a;
+}
+#btn-skill-back:hover {
+    background: #3a3a4a;
+}
+
+/* ====== 右侧面板 — 工具分组 ====== */
+#section-groups-title {
+    height: auto;
+    max-height: 2;
+    color: #ffd93d;
+    padding: 1 0 0 0;
+}
+
+#section-groups-list {
+    height: auto;
+    max-height: 8;
+    border-bottom: solid #252742;
+    scrollbar-size-vertical: 1;
+    scrollbar-color: #ffd93d;
+    background: #0f1025;
+}
+
+#section-groups-list > .option-list--option-highlighted {
+    background: #3a3520;
+    color: #ffd93d;
+}
+
+#section-groups-list > .option-list--option-hover {
+    background: #2a2515;
+}
+
+/* ====== @ 补全弹窗 ====== */
+MentionSelectScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#mention-dialog {
+    width: 80;
+    max-height: 70%;
+    border: thick #ffd93d;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#mention-title {
+    text-align: center;
+    width: 100%;
+    height: 2;
+    color: #ffd93d;
+}
+
+#mention-filter {
+    margin-bottom: 1;
+}
+
+#mention-list {
+    height: 1fr;
+    width: 100%;
+    background: #12132a;
+}
+
+#mention-list > .option-list--option-highlighted {
+    background: #3a3520;
+    color: #ffd93d;
+}
+
+#mention-list > .option-list--option-hover {
+    background: #2a2515;
+}
+
+/* ====== Skill 内容弹窗 ====== */
+SkillContentScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#skill-content-dialog {
+    width: 90%;
+    max-width: 120;
+    max-height: 85%;
+    border: thick #a78bfa;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#skill-content-text {
+    width: 100%;
+}
+
+/* ====== 轮次输入弹窗 ====== */
+RoundsInputScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#rounds-dialog {
+    width: 60%;
+    max-width: 60;
+    max-height: 30%;
+    border: thick #ffd93d;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#rounds-title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+#rounds-hint {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+#rounds-input {
+    margin-bottom: 1;
+}
+
+#rounds-footer {
+    text-align: center;
+}
+
+/* ====== Agent 管理弹窗 ====== */
+AgentSelectScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#preset-dialog {
+    width: 100;
+    max-height: 70%;
+    border: thick #a78bfa;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#preset-title {
+    text-align: center;
+    width: 100%;
+    height: 2;
+    color: #a78bfa;
+}
+
+#preset-list {
+    height: 1fr;
+    width: 100%;
+    background: #12132a;
+}
+
+#preset-list > .option-list--option-highlighted {
+    background: #00bcd4;
+    color: #0a0a1a;
+    text-style: bold;
+}
+
+#preset-list > .option-list--option-hover {
+    background: #00838f;
+    color: #e0f7fa;
+}
+
+#preset-buttons {
+    height: auto;
+    width: 100%;
+    align: center middle;
+    padding-top: 1;
+}
+
+#preset-buttons Button {
+    margin: 0 1;
+    min-width: 10;
+}
+
+#btn-agent-view {
+    background: #2a3a5a;
+    color: #8ab4f8;
+    border: tall #4a6a9a;
+}
+#btn-agent-view:hover {
+    background: #3a4a6a;
+}
+
+#btn-agent-edit {
+    background: #3a3020;
+    color: #ffc107;
+    border: tall #6a5a30;
+}
+#btn-agent-edit:hover {
+    background: #4a4030;
+}
+
+#btn-agent-apply {
+    background: #1a3a2a;
+    color: #00e676;
+    border: tall #2a6a4a;
+}
+#btn-agent-apply:hover {
+    background: #2a4a3a;
+}
+
+#btn-agent-copy {
+    background: #2a2a4a;
+    color: #b39ddb;
+    border: tall #4a4a7a;
+}
+#btn-agent-copy:hover {
+    background: #3a3a5a;
+}
+
+#btn-agent-new {
+    background: #1a3a4a;
+    color: #00bcd4;
+    border: tall #2a5a6a;
+}
+#btn-agent-new:hover {
+    background: #2a4a5a;
+}
+
+#btn-agent-delete {
+    background: #3a1a1a;
+    color: #ff5252;
+    border: tall #6a2a2a;
+}
+#btn-agent-delete:hover {
+    background: #4a2a2a;
+}
+
+/* ====== Agent 详情弹窗 ====== */
+AgentContentScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#preset-content-dialog {
+    width: 85%;
+    max-width: 110;
+    max-height: 80%;
+    border: thick #a78bfa;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+/* ====== Agent 编辑弹窗 ====== */
+AgentEditScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#preset-save-dialog {
+    width: 80%;
+    max-width: 100;
+    max-height: 70%;
+    border: thick #ffd93d;
+    background: #1a1b2e;
+    padding: 1 2;
+}
+
+#preset-save-title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+#preset-name-input {
+    margin-bottom: 1;
+}
+
+#preset-content-input {
+    height: 1fr;
+    min-height: 5;
+    margin-bottom: 1;
+}
+
+#preset-save-buttons {
+    height: auto;
+    width: 100%;
+    align: center middle;
+    padding-top: 1;
+}
+
+#preset-save-buttons Button {
+    margin: 0 1;
+    min-width: 12;
+}
+
+.agent-toggle-buttons {
+    height: auto;
+    width: 100%;
+    padding: 0 0 1 0;
+}
+
+.agent-toggle-buttons Button {
+    margin: 0 1;
+    min-width: 10;
+    height: 1;
+    background: #1a2a3a;
+    color: #6b9bc0;
+    border: none;
+}
+.agent-toggle-buttons Button:hover {
+    background: #2a3a4a;
+}
