@@ -1,5 +1,32 @@
 # AI 重大更新记录
 
+## 2026-05-28: 项目拆分 — nb_agent core + nb_agent_bfzs demo
+
+**变更**：将 nb_agent 拆分为纯框架和独立演示项目。
+
+**nb_agent core 精简**：
+- 移除 `calculate` 内置工具，只保留 `get_current_time` 和 `view_skill`（框架必需）
+- 移除 `nb_agent/skills/builtin/` 下的 3 个内置 Skill（code-review、refactor、explain-code）
+- `__init__.py` 导出 `load_config` 和 `AgentApp`，用户可直接 `from nb_agent import load_config, AgentApp`
+- `examples/demo2/` 精简为最小示例
+
+**nb_agent_bfzs 演示项目** (`D:/codes/nb_agent_bfzs/`)：
+- `main.py`：6 行核心代码即可启动完整 Agent TUI
+- `tools/`：笔记工具(5个) + 项目统计工具(2个)
+- `mcp_servers/`：书签管理 MCP Server
+- `.nb_agent/skills/`：6 个 Skill（daily-report、meeting-notes、git-changelog、code-review、refactor、explain-code）
+- `config.jsonc`：完整配置模板（DeepSeek + LiteLLM 可选）
+
+**其他修改**：
+- AgentEditScreen 勾选符号 `X` → `✓`（通过 `ToggleButton.BUTTON_INNER`）
+- 工具组/MCP 列表文案从"取消勾选=禁用"改为正面表述"✓ 启用"
+- 添加"全部启用"/"全部禁用"按钮
+- 内置 Skill 的 `paths` 字段已移除（非 agentskills.io 规范）
+- README/TUI 补全 agentskills.io 规范所有 Front Matter 字段
+- `@modelcontextprotocol/server-filesystem` 配置修复：必须加路径参数
+
+---
+
 ## 2026-05-28: Agent 智能体功能（取代旧的 Preset/提示词）
 
 **功能**：Agent 是 nb_agent 的核心概念，每个 Agent 绑定一套 system prompt + 工具分组开关 + MCP 服务器开关。应用 Agent 会创建新会话，会话绑定 agent_id。

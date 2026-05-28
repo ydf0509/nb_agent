@@ -27,6 +27,16 @@
 
   // MCP Server 配置（可选）
   "mcp": {
+    // 文件系统 MCP：让 AI 读写指定目录的文件
+    // ⚠ 必须至少提供一个绝对路径，AI 只能访问列出的目录
+    // "filesystem": {
+    //   "command": "npx",
+    //   "args": [
+    //     "-y",
+    //     "@modelcontextprotocol/server-filesystem",
+    //     "/path/to/your/project"
+    //   ]
+    // },
     // "serena": {
     //   "type": "local",
     //   "command": "serena",
