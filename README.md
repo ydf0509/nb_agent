@@ -142,6 +142,18 @@ description: >-
 
 **跨平台兼容**：放在 `.agents/skills/` 目录下的 Skill 可以同时被 nb_agent、OpenAI Codex、Gemini CLI 等工具识别。
 
+## nb_log_config.py 配置
+
+nb_agent 使用 [nb_log](https://github.com/ydf0509/nb_log) 作为日志库。TUI 模式下需要在项目根目录的 `nb_log_config.py` 中关闭以下 3 项配置，否则 **TUI 会黑屏**：
+
+```python
+PRINT_WRTIE_FILE_NAME = None   # 禁止 nb_log 劫持 sys.stdout 写文件
+SYS_STD_FILE_NAME = None       # 禁止 nb_log 劫持 sys.stdout 写文件
+AUTO_PATCH_PRINT = False       # 禁止 monkey patch print
+```
+
+> **原理**：Textual TUI 独占终端的 alternate screen buffer 进行渲染，`nb_log` 的 `SYS_STD_FILE_NAME` 和 `PRINT_WRTIE_FILE_NAME` 会 monkey patch `sys.stdout`，`AUTO_PATCH_PRINT` 会替换内置 `print`——这些都会破坏 Textual 的渲染通道导致黑屏。nb_agent 内部已处理了 MCP 子进程 stderr 和 logging handler 的重定向，用户只需确保这 3 项配置正确即可。
+
 ## CLI
 
 ```bash

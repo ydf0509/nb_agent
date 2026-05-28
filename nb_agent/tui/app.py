@@ -93,7 +93,12 @@ class AgentApp(App):
 
     def __init__(self, config: dict):
         super().__init__()
+        self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
+        self._tui_log_file = self._open_tui_log()
+
         self.agent = AgentCore(config)
+        self.agent.mcp_manager.errlog = self._tui_log_file
         self.config = config
         self._sending = False
         self._cancel_requested = False
@@ -106,6 +111,49 @@ class AgentApp(App):
         self._last_elapsed: float = 0.0
 
         self.agent.approval_callback = self._request_tool_approval
+
+    @staticmethod
+    def _open_tui_log():
+        log_dir = Path.home() / ".nb_agent" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return open(log_dir / "tui_stdout.log", "a", encoding="utf-8")
+
+    def _redirect_all_handlers(self):
+        """将所有指向终端的 logging handler 和 nb_log 缓存引用重定向到 TUI 日志文件。
+
+        不动 sys.stdout（Textual 需要它来渲染界面），
+        只在 handler 和 nb_log 内部引用层面拦截。
+        """
+        import logging
+        log_file = self._tui_log_file
+        log_write = log_file.write
+
+        for logger_obj in [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values()):
+            if not isinstance(logger_obj, logging.Logger):
+                continue
+            for h in logger_obj.handlers:
+                if hasattr(h, 'stream') and h.stream in (self._original_stdout, self._original_stderr):
+                    h.stream = log_file
+
+        try:
+            import nb_log.monkey_sys_std as _std_mod
+            _std_mod.stdout_raw = log_write
+            _std_mod.stderr_raw = log_write
+            import nb_log
+            nb_log.stdout_raw = log_write
+            nb_log.stderr_raw = log_write
+        except (ImportError, AttributeError):
+            pass
+
+        try:
+            import nb_log.monkey_print as _print_mod
+            _print_mod.print_raw = lambda *a, **kw: print(*a, **kw, file=log_file)
+        except (ImportError, AttributeError):
+            pass
+
+    def _restore_stdio(self):
+        if self._tui_log_file and not self._tui_log_file.closed:
+            self._tui_log_file.close()
 
     async def _request_tool_approval(self, tool_name: str, tool_args: dict) -> bool:
         future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
@@ -129,6 +177,8 @@ class AgentApp(App):
         yield Footer()
 
     async def on_mount(self):
+        self._redirect_all_handlers()
+
         chat = self.query_one("#chat-panel", RichLog)
         model = self.agent.get_model_name()
         total = len(self.agent.available_models)
@@ -158,13 +208,14 @@ class AgentApp(App):
         self.query_one("#tool-panel", ToolPanel).update_content()
 
     def _update_subtitle(self):
-        title = self.agent.session_store.get_session_title(self.agent.session_id)
-        if title and title != "新会话":
-            self.sub_title = title
-            self._set_terminal_title(f"nb_agent - {title}")
+        agent_name = self.agent.current_agent_name or "默认助手"
+        session_title = self.agent.session_store.get_session_title(self.agent.session_id)
+        if session_title and session_title != "新会话":
+            self.sub_title = f"Agent: {agent_name} | {session_title}"
+            self._set_terminal_title(f"nb_agent - {agent_name} - {session_title}")
         else:
-            self.sub_title = ""
-            self._set_terminal_title("nb_agent")
+            self.sub_title = f"Agent: {agent_name}"
+            self._set_terminal_title(f"nb_agent - {agent_name}")
 
     @staticmethod
     def _set_terminal_title(title: str):
@@ -360,8 +411,9 @@ class AgentApp(App):
         elapsed = time.monotonic() - self._send_start_time
         self._last_elapsed = elapsed
         t = self.agent.get_token_usage()
+        rounds_str = f" | 交互{t['last_rounds']}轮" if t['last_rounds'] > 1 else ""
         tc_str = f" | 工具{t['last_tool_calls']}次" if t['last_tool_calls'] > 0 else ""
-        chat.write(f"[#6b7394](本次 入{_fmt_tokens(t['last_prompt'])}+出{_fmt_tokens(t['last_completion'])}={_fmt_tokens(t['last_total'])} | 耗时{elapsed:.1f}s{tc_str} | 累计 {_fmt_tokens(t['total'])})[/#6b7394]")
+        chat.write(f"[#6b7394](本次 入{_fmt_tokens(t['last_prompt'])}+出{_fmt_tokens(t['last_completion'])}={_fmt_tokens(t['last_total'])} | 耗时{elapsed:.1f}s{rounds_str}{tc_str} | 累计 {_fmt_tokens(t['total'])})[/#6b7394]")
         chat.auto_scroll = True
         chat.scroll_end(animate=False)
 
@@ -401,8 +453,9 @@ class AgentApp(App):
         elapsed = time.monotonic() - self._send_start_time
         self._last_elapsed = elapsed
         t = self.agent.get_token_usage()
+        rounds_str = f" | 交互{t['last_rounds']}轮" if t['last_rounds'] > 1 else ""
         tc_str = f" | 工具{t['last_tool_calls']}次" if t['last_tool_calls'] > 0 else ""
-        chat.write(f"[#6b7394](本次 入{_fmt_tokens(t['last_prompt'])}+出{_fmt_tokens(t['last_completion'])}={_fmt_tokens(t['last_total'])} | 耗时{elapsed:.1f}s{tc_str} | 累计 {_fmt_tokens(t['total'])})[/#6b7394]")
+        chat.write(f"[#6b7394](本次 入{_fmt_tokens(t['last_prompt'])}+出{_fmt_tokens(t['last_completion'])}={_fmt_tokens(t['last_total'])} | 耗时{elapsed:.1f}s{rounds_str}{tc_str} | 累计 {_fmt_tokens(t['total'])})[/#6b7394]")
 
     # ─── 快捷键 Actions ────────────────────────────────
 
@@ -522,13 +575,14 @@ class AgentApp(App):
         edit_id = data.get("edit_id", "")
         name = data["name"]
         prompt = data["system_prompt"]
-        dg = data.get("disabled_groups", [])
-        ds = data.get("disabled_servers", [])
+        atg = data.get("allowed_tool_groups")
+        ams = data.get("allowed_mcp_servers")
+        ask = data.get("allowed_skills")
         if edit_id:
-            self.agent.update_agent(edit_id, name, prompt, dg, ds)
+            self.agent.update_agent(edit_id, name, prompt, atg, ams, ask)
             self.notify(f"已更新 Agent: {name}", timeout=3)
         else:
-            self.agent.save_agent(name, prompt, dg, ds)
+            self.agent.save_agent(name, prompt, atg, ams, ask)
             self.notify(f"已创建 Agent: {name}", timeout=3)
         self.query_one("#user-input", ChatInput).focus()
 
@@ -580,6 +634,7 @@ class AgentApp(App):
 
     async def on_unmount(self):
         await self.agent.disconnect_mcp()
+        self._restore_stdio()
 
     # ─── 命令面板回调 ──────────────────────────────────
 
@@ -621,6 +676,13 @@ class AgentApp(App):
     def _on_skill_selected(self, skill_name):
         if not skill_name:
             self.query_one("#user-input", ChatInput).focus()
+            return
+        if skill_name.startswith("__apply__:"):
+            real_name = skill_name[10:]
+            input_widget = self.query_one("#user-input", ChatInput)
+            input_widget.insert(f"@skill:{real_name} ")
+            input_widget.focus()
+            self.notify(f"已插入 @skill:{real_name}，输入消息后发送即可", timeout=3)
             return
         skill_data = self.agent.skill_manager.view_skill(skill_name)
         if skill_data.get("success"):

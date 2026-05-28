@@ -169,12 +169,13 @@ class SkillManager:
 
         self._skills = discovered
 
-    def get_manifest(self) -> list[dict[str, str]]:
-        """Return auto-invocable skills (exclude disable-model-invocation=true)."""
+    def get_manifest(self, allowed_skills: set | None = None) -> list[dict[str, str]]:
+        """Return auto-invocable skills. None=全部允许, set()=全部禁用, {'a','b'}=只允许a和b。"""
         return [
             {"name": record.name, "description": record.description}
             for record in sorted(self._skills.values(), key=lambda item: item.name)
             if not record.disable_model_invocation
+            and (allowed_skills is None or record.name in allowed_skills)
         ]
 
     def get_all_skills(self) -> list[dict[str, str]]:

@@ -10,6 +10,7 @@ AgentCore — ReAct 循环核心
 import asyncio
 import functools
 import json
+import time
 import uuid
 from typing import AsyncIterator, List, Dict, Optional, Callable
 
@@ -25,6 +26,7 @@ from nb_agent.mcp import MCPManager
 from nb_agent.approval import ApprovalEngine
 from nb_agent.tools import TOOL_REGISTRY
 from nb_agent.skills import SkillManager
+from nb_agent.utils.loggers import logger_llm_call, logger_llm_call_raw
 
 
 class AgentCore:
@@ -49,6 +51,7 @@ class AgentCore:
         self.last_turn_prompt = 0
         self.last_turn_completion = 0
         self.last_turn_tool_calls = 0
+        self.last_turn_rounds = 0
 
         self.tool_registry: Dict[str, dict] = dict(TOOL_REGISTRY)
 
@@ -57,6 +60,8 @@ class AgentCore:
             project_root=__import__("pathlib").Path(project_root) if project_root else None
         )
         self.skill_manager.discover()
+        self.allowed_tool_groups: set = None
+        self.allowed_skills: set = None
         self.system_prompt = self._build_system_prompt(self._base_prompt)
         self.messages: List[dict] = [{"role": "system", "content": self.system_prompt}]
 
@@ -71,13 +76,10 @@ class AgentCore:
         extra_dangerous = config.get("approval", {}).get("dangerous_tools", [])
         self.approval_engine = ApprovalEngine(extra_dangerous=extra_dangerous or None)
 
-        self.disabled_tool_groups: set = set()
-
         self.mcp_manager = MCPManager()
 
         db_path = config.get("session", {}).get("db_path", "")
         self.session_store = SessionStore(db_path)
-        self._seed_builtin_agents()
         self.session_id = str(uuid.uuid4())[:8]
         model_id = self.current_model.id if self.current_model else ""
         self.session_store.create_session(
@@ -86,22 +88,24 @@ class AgentCore:
         )
 
     def _build_system_prompt(self, base_prompt: str) -> str:
-        """在用户 system_prompt 末尾追加 Skills 清单（渐进式披露）"""
-        manifest = self.skill_manager.get_manifest()
-        if not manifest:
-            return base_prompt
-        lines = [
-            base_prompt,
-            "",
-            "## 可用 Skills",
-            "以下是你可以使用的技能指南。当任务匹配某个 Skill 时，先调用 `view_skill` 工具获取完整指南再执行。",
-            "",
-        ]
-        for s in manifest:
-            lines.append(f"- **{s['name']}**: {s['description']}")
-        lines.append("")
-        lines.append("调用方式: `view_skill(skill_name=\"<name>\")` 获取完整指南内容。")
-        return "\n".join(lines)
+        """在用户 system_prompt 末尾追加当前日期 + Skills 清单"""
+        import datetime as _dt
+        now = _dt.datetime.now()
+        weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+        date_str = f"{now.strftime('%Y-%m-%d')} {weekdays[now.weekday()]}"
+        parts = [base_prompt, "", f"当前日期: {date_str}"]
+
+        manifest = self.skill_manager.get_manifest(allowed_skills=self.allowed_skills)
+        if manifest:
+            parts.append("")
+            parts.append("## 可用 Skills")
+            parts.append("以下是你可以使用的技能指南。当任务匹配某个 Skill 时，先调用 `view_skill` 工具获取完整指南再执行。")
+            parts.append("")
+            for s in manifest:
+                parts.append(f"- **{s['name']}**: {s['description']}")
+            parts.append("")
+            parts.append("调用方式: `view_skill(skill_name=\"<name>\")` 获取完整指南内容。")
+        return "\n".join(parts)
 
     def _select_default_model(self):
         default = self.config.get("agent", {}).get("default_model", "")
@@ -123,15 +127,15 @@ class AgentCore:
         return self._llm_clients[key]
 
     def _get_openai_tools(self) -> list:
-        """合并内置 tools + MCP tools + Skills view_skill，过滤 disabled groups"""
+        """合并内置 tools + MCP tools + Skills view_skill，按 allowed 过滤"""
         tools = []
         for t in self.tool_registry.values():
             group = t.get("group", "")
-            if group and group in self.disabled_tool_groups:
+            if group and self.allowed_tool_groups is not None and group not in self.allowed_tool_groups:
                 continue
             tools.append(t["schema"])
         tools.extend(self.mcp_manager.get_all_tools_openai_format())
-        if self.skill_manager.get_manifest():
+        if self.skill_manager.get_manifest(allowed_skills=self.allowed_skills):
             tools.append(self.skill_manager.get_view_skill_schema())
         return tools
 
@@ -231,8 +235,10 @@ class AgentCore:
         self.last_turn_prompt = 0
         self.last_turn_completion = 0
         self.last_turn_tool_calls = 0
+        self.last_turn_rounds = 0
 
         for round_idx in range(self.MAX_TOOL_ROUNDS):
+            self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
                     "model": self.current_model.id,
@@ -330,22 +336,22 @@ class AgentCore:
         self.last_turn_prompt = 0
         self.last_turn_completion = 0
         self.last_turn_tool_calls = 0
+        self.last_turn_rounds = 0
 
         for round_idx in range(self.MAX_TOOL_ROUNDS):
+            self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
                     "model": self.current_model.id,
                     "messages": self._clean_messages_for_api(),
                     "stream": True,
                 }
-                if self.current_model.base_url and "openai.com" in self.current_model.base_url:
-                    kwargs["stream_options"] = {"include_usage": True}
-                elif self.current_model.base_url and "deepseek.com" in self.current_model.base_url:
-                    kwargs["stream_options"] = {"include_usage": True}
+                kwargs["stream_options"] = {"include_usage": True}
                 if openai_tools:
                     kwargs["tools"] = openai_tools
 
                 stream_resp = await call_llm_with_retry(client, **kwargs)
+                stream_t0 = time.monotonic()
 
                 full_content = ""
                 full_reasoning = ""
@@ -397,6 +403,32 @@ class AgentCore:
                     self.last_turn_completion += c
                     self.total_prompt_tokens += p
                     self.total_completion_tokens += c
+
+                stream_elapsed = time.monotonic() - stream_t0
+                stream_summary = {
+                    "content_length": len(full_content),
+                    "reasoning_length": len(full_reasoning),
+                    "has_tool_calls": has_tool_calls,
+                    "tool_calls": [
+                        {"name": tc["name"], "args": tc["arguments"][:200]}
+                        for tc in tool_calls_map.values()
+                    ] if has_tool_calls else [],
+                    "usage": {"prompt": self.last_turn_prompt, "completion": self.last_turn_completion},
+                }
+                logger_llm_call.info(
+                    f"[LLM流式完成] round={round_idx + 1} elapsed={stream_elapsed:.2f}s | "
+                    f"{json.dumps(stream_summary, ensure_ascii=False, default=str)}\n\n"
+                )
+                raw_resp = {
+                    "content": full_content,
+                    "reasoning_content": full_reasoning,
+                    "tool_calls": [tool_calls_map[k] for k in sorted(tool_calls_map.keys())] if has_tool_calls else [],
+                    "usage": {"prompt": self.last_turn_prompt, "completion": self.last_turn_completion},
+                }
+                logger_llm_call_raw.info(
+                    f"[LLM流式完成-RAW] round={round_idx + 1} elapsed={stream_elapsed:.2f}s\n"
+                    f"{json.dumps(raw_resp, ensure_ascii=False, default=str, indent=2)}\n\n"
+                )
 
                 if not has_tool_calls:
                     msg = {"role": "assistant", "content": full_content}
@@ -555,16 +587,16 @@ class AgentCore:
                 "group": group,
                 "description": t["schema"]["function"]["description"],
                 "source": source,
-                "disabled": group in self.disabled_tool_groups if group else False,
+                "disabled": (self.allowed_tool_groups is not None and group not in self.allowed_tool_groups) if group else False,
             })
-        if self.skill_manager.get_manifest():
+        if self.skill_manager.get_manifest(allowed_skills=self.allowed_skills):
             builtin.append({
                 "name": "view_skill",
                 "func_name": "view_skill",
                 "group": "nb_agent_builtin",
                 "description": "查看 Skill 完整指南",
                 "source": "Skills",
-                "disabled": "nb_agent_builtin" in self.disabled_tool_groups,
+                "disabled": self.allowed_tool_groups is not None and "nb_agent_builtin" not in self.allowed_tool_groups,
             })
         mcp_tools = []
         for t in self.mcp_manager.get_tool_info_list():
@@ -575,7 +607,7 @@ class AgentCore:
                 "group": f"mcp__{server}",
                 "description": t["description"],
                 "source": f"MCP:{server}",
-                "disabled": self.mcp_manager.is_server_disabled(server),
+                "disabled": not self.mcp_manager.is_server_enabled(server),
             })
         return builtin + mcp_tools
 
@@ -597,11 +629,15 @@ class AgentCore:
         if group.startswith("mcp__"):
             server_name = group[5:]
             return self.mcp_manager.toggle_server(server_name)
-        if group in self.disabled_tool_groups:
-            self.disabled_tool_groups.discard(group)
-            return True
-        self.disabled_tool_groups.add(group)
-        return False
+        if self.allowed_tool_groups is None:
+            all_groups = {t.get("group", "") for t in self.tool_registry.values() if t.get("group")}
+            self.allowed_tool_groups = all_groups - {group}
+            return False
+        if group in self.allowed_tool_groups:
+            self.allowed_tool_groups.discard(group)
+            return False
+        self.allowed_tool_groups.add(group)
+        return True
 
     def get_mcp_status(self) -> list:
         return self.mcp_manager.get_server_status()
@@ -621,6 +657,7 @@ class AgentCore:
             "last_completion": self.last_turn_completion,
             "last_total": self.last_turn_prompt + self.last_turn_completion,
             "last_tool_calls": self.last_turn_tool_calls,
+            "last_rounds": self.last_turn_rounds,
             "total_prompt": self.total_prompt_tokens,
             "total_completion": self.total_completion_tokens,
             "total": self.total_prompt_tokens + self.total_completion_tokens,
@@ -645,90 +682,15 @@ class AgentCore:
 
     # ==================== Agent ====================
 
-    BUILTIN_AGENTS = [
-        {
-            "id": "_news_search",
-            "name": "新闻搜索",
-            "system_prompt": (
-                "你是一个新闻搜索助手。用户会给你一个新闻话题或关键词，你需要通过 web-search MCP "
-                "工具帮用户搜索最新新闻并整理摘要。\n\n"
-                "## web-search 搜索策略\n\n"
-                "1. 使用 `searchWeb` 工具发起搜索，参数 `engines` 可选值：\n"
-                "   bing, duckduckgo, sogou, startpage, brave, exa, csdn, juejin\n"
-                "   每次搜索可组合使用多个引擎，如 [\"bing\",\"duckduckgo\",\"brave\"]\n"
-                "   **注意：不要使用 baidu 引擎（免费用户不可用，搜不到内容）**\n\n"
-                "2. 搜索完成后，从所有结果中筛选出质量最高、最相关的 **10 条**\n\n"
-                "3. 使用 `fetchWebContent` 工具逐一抓取这 10 条的详情全文\n\n"
-                "4. 最终整理为结构化的摘要呈现给用户，包括：\n"
-                "   - 标题、来源、时间\n"
-                "   - 核心内容摘要\n"
-                "   - 原文链接\n\n"
-                "## 输出格式\n\n"
-                "按新闻的重要性和时效性排序，使用 Markdown 格式输出。"
-            ),
-        },
-        {
-            "id": "_code_review",
-            "name": "代码审查",
-            "system_prompt": (
-                "你是一位资深的代码审查专家。用户会提供代码片段或文件，你需要：\n\n"
-                "1. **正确性**：检查逻辑错误、边界条件、异常处理\n"
-                "2. **安全性**：识别潜在安全漏洞（注入、XSS、敏感信息泄露等）\n"
-                "3. **性能**：发现性能瓶颈和优化机会\n"
-                "4. **可读性**：命名、注释、代码组织是否清晰\n"
-                "5. **最佳实践**：是否符合语言/框架的惯用写法\n\n"
-                "对每个问题给出具体位置、原因和修改建议。先总结关键问题，再逐项展开。"
-            ),
-        },
-        {
-            "id": "_translator",
-            "name": "翻译助手",
-            "system_prompt": (
-                "你是一位专业翻译。根据输入文本自动检测源语言，翻译为目标语言。\n\n"
-                "- 中文 → 英文，英文 → 中文（默认互译）\n"
-                "- 用户可以指定目标语言\n"
-                "- 保持原文的语气和风格\n"
-                "- 专业术语给出注释\n"
-                "- 如果是技术文档，保留代码块和格式不翻译"
-            ),
-        },
-        {
-            "id": "_writing",
-            "name": "写作助手",
-            "system_prompt": (
-                "你是一位优秀的中文写作助手。帮助用户撰写、润色和优化各类文本。\n\n"
-                "**能力范围**：\n"
-                "- 文章写作：博客、技术文章、报告\n"
-                "- 文案润色：改善表达、修正语病、提升可读性\n"
-                "- 摘要提炼：从长文中提取核心观点\n"
-                "- 大纲生成：根据主题生成结构化大纲\n\n"
-                "**写作原则**：\n"
-                "- 简洁有力，避免冗余\n"
-                "- 逻辑清晰，层次分明\n"
-                "- 用词准确，风格一致"
-            ),
-        },
-    ]
-
-    def _seed_builtin_agents(self):
-        """首次启动时插入内置 Agent，已有则跳过"""
-        existing = self.session_store.list_agents()
-        existing_ids = {a["id"] for a in existing}
-        for agent in self.BUILTIN_AGENTS:
-            if agent["id"] not in existing_ids:
-                self.session_store.create_agent(
-                    agent["id"], agent["name"], agent["system_prompt"],
-                    is_builtin=True,
-                )
-
     def get_agents(self) -> list:
         """返回所有 Agent（含默认），当前使用的标记 is_current"""
         default = {
             "id": self.DEFAULT_AGENT_ID,
             "name": "默认助手",
             "system_prompt": self._base_prompt,
-            "disabled_groups": [],
-            "disabled_servers": [],
+            "allowed_tool_groups": None,
+            "allowed_mcp_servers": None,
+            "allowed_skills": None,
             "is_builtin": True,
         }
         saved = self.session_store.list_agents()
@@ -736,26 +698,35 @@ class AgentCore:
         return result
 
     def save_agent(self, name: str, system_prompt: str,
-                   disabled_groups: list = None, disabled_servers: list = None) -> str:
+                   allowed_tool_groups: list = None,
+                   allowed_mcp_servers: list = None,
+                   allowed_skills: list = None) -> str:
         agent_id = str(uuid.uuid4())[:8]
         self.session_store.create_agent(
             agent_id, name, system_prompt,
-            disabled_groups=disabled_groups, disabled_servers=disabled_servers,
+            allowed_tool_groups=allowed_tool_groups,
+            allowed_mcp_servers=allowed_mcp_servers,
+            allowed_skills=allowed_skills,
         )
         return agent_id
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
-                     disabled_groups: list = None, disabled_servers: list = None):
+                     allowed_tool_groups: list = None,
+                     allowed_mcp_servers: list = None,
+                     allowed_skills: list = None):
         self.session_store.update_agent(
             agent_id, name, system_prompt,
-            disabled_groups=disabled_groups, disabled_servers=disabled_servers,
+            allowed_tool_groups=allowed_tool_groups,
+            allowed_mcp_servers=allowed_mcp_servers,
+            allowed_skills=allowed_skills,
         )
         if self.current_agent_id == agent_id:
             self.current_agent_name = name
+            self.allowed_skills = set(allowed_skills) if allowed_skills is not None else None
             self.system_prompt = self._build_system_prompt(system_prompt)
             self.messages[0] = {"role": "system", "content": self.system_prompt}
-            self.disabled_tool_groups = set(disabled_groups or [])
-            self.mcp_manager.set_disabled_servers(disabled_servers or [])
+            self.allowed_tool_groups = set(allowed_tool_groups) if allowed_tool_groups is not None else None
+            self.mcp_manager.set_allowed_servers(allowed_mcp_servers)
 
     def delete_agent(self, agent_id: str) -> bool:
         if agent_id == self.DEFAULT_AGENT_ID:
@@ -766,13 +737,14 @@ class AgentCore:
         return True
 
     def apply_agent(self, agent_id: str):
-        """应用 Agent 配置：替换 system prompt + 工具开关，新建会话"""
+        """应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关，新建会话"""
         if agent_id == self.DEFAULT_AGENT_ID:
             agent_data = {
                 "name": "默认助手",
                 "system_prompt": self._base_prompt,
-                "disabled_groups": [],
-                "disabled_servers": [],
+                "allowed_tool_groups": None,
+                "allowed_mcp_servers": None,
+                "allowed_skills": None,
             }
         else:
             agent_data = self.session_store.get_agent(agent_id)
@@ -781,9 +753,12 @@ class AgentCore:
 
         self.current_agent_id = agent_id
         self.current_agent_name = agent_data["name"]
+        raw_skills = agent_data.get("allowed_skills")
+        self.allowed_skills = set(raw_skills) if raw_skills is not None else None
         self.system_prompt = self._build_system_prompt(agent_data["system_prompt"])
-        self.disabled_tool_groups = set(agent_data.get("disabled_groups") or [])
-        self.mcp_manager.set_disabled_servers(agent_data.get("disabled_servers") or [])
+        raw_groups = agent_data.get("allowed_tool_groups")
+        self.allowed_tool_groups = set(raw_groups) if raw_groups is not None else None
+        self.mcp_manager.set_allowed_servers(agent_data.get("allowed_mcp_servers"))
 
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self.total_prompt_tokens = 0

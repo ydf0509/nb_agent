@@ -14,6 +14,7 @@ from pathlib import Path
 
 import json5
 from dotenv import load_dotenv
+from nb_agent.utils.loggers import logger_config
 
 
 DEFAULT_CONFIG = {
@@ -87,16 +88,14 @@ def load_config(cli_config_path: str = "", dotenv_path: str = "") -> dict:
         with open(config_path, "r", encoding="utf-8") as f:
             raw = f.read()
     except (FileNotFoundError, PermissionError) as e:
-        import logging
-        logging.warning(f"配置文件读取失败: {e}，使用默认配置")
+        logger_config.warning(f"配置文件读取失败: {e}，使用默认配置")
         return copy.deepcopy(DEFAULT_CONFIG)
 
     raw = _substitute_env(raw)
     try:
         user_config = json5.loads(raw)
     except ValueError as e:
-        import logging
-        logging.warning(f"配置文件解析失败: {e}，使用默认配置")
+        logger_config.warning(f"配置文件解析失败: {e}，使用默认配置")
         return copy.deepcopy(DEFAULT_CONFIG)
 
     merged = _deep_merge(copy.deepcopy(DEFAULT_CONFIG), user_config)

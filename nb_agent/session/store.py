@@ -124,52 +124,58 @@ class SessionStore:
     # ==================== Agent ====================
 
     def create_agent(self, agent_id: str, name: str, system_prompt: str,
-                     disabled_groups: list = None, disabled_servers: list = None,
+                     allowed_tool_groups: list = None,
+                     allowed_mcp_servers: list = None,
+                     allowed_skills: list = None,
                      is_builtin: bool = False) -> str:
         now = datetime.datetime.now().isoformat()
         with self._session() as s:
             s.add(AgentConfig(
                 id=agent_id, name=name, system_prompt=system_prompt,
-                disabled_groups_json=json.dumps(disabled_groups or []),
-                disabled_servers_json=json.dumps(disabled_servers or []),
+                allowed_tool_groups_json=json.dumps(allowed_tool_groups),
+                allowed_mcp_servers_json=json.dumps(allowed_mcp_servers),
+                allowed_skills_json=json.dumps(allowed_skills),
                 is_builtin=is_builtin,
                 created_at=now, updated_at=now,
             ))
             s.commit()
         return agent_id
 
+    @staticmethod
+    def _deserialize_agent(d: dict) -> dict:
+        for src, dst in [("allowed_tool_groups_json", "allowed_tool_groups"),
+                         ("allowed_mcp_servers_json", "allowed_mcp_servers"),
+                         ("allowed_skills_json", "allowed_skills")]:
+            raw = d.pop(src, "null")
+            d[dst] = json.loads(raw) if raw else None
+        return d
+
     def list_agents(self) -> List[dict]:
         with self._session() as s:
             stmt = select(AgentConfig).order_by(AgentConfig.created_at)
             rows = s.exec(stmt).all()
-            result = []
-            for r in rows:
-                d = r.model_dump()
-                d["disabled_groups"] = json.loads(d.pop("disabled_groups_json"))
-                d["disabled_servers"] = json.loads(d.pop("disabled_servers_json"))
-                result.append(d)
-            return result
+            return [self._deserialize_agent(r.model_dump()) for r in rows]
 
     def get_agent(self, agent_id: str) -> Optional[dict]:
         with self._session() as s:
             row = s.get(AgentConfig, agent_id)
             if not row:
                 return None
-            d = row.model_dump()
-            d["disabled_groups"] = json.loads(d.pop("disabled_groups_json"))
-            d["disabled_servers"] = json.loads(d.pop("disabled_servers_json"))
-            return d
+            return self._deserialize_agent(row.model_dump())
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
-                     disabled_groups: list = None, disabled_servers: list = None):
+                     allowed_tool_groups: list = None,
+                     allowed_mcp_servers: list = None,
+                     allowed_skills: list = None):
         now = datetime.datetime.now().isoformat()
         with self._session() as s:
             row = s.get(AgentConfig, agent_id)
             if row:
                 row.name = name
                 row.system_prompt = system_prompt
-                row.disabled_groups_json = json.dumps(disabled_groups or [])
-                row.disabled_servers_json = json.dumps(disabled_servers or [])
+                row.allowed_tool_groups_json = json.dumps(allowed_tool_groups)
+                row.allowed_mcp_servers_json = json.dumps(allowed_mcp_servers)
+                row.allowed_skills_json = json.dumps(allowed_skills)
                 row.updated_at = now
                 s.add(row)
                 s.commit()

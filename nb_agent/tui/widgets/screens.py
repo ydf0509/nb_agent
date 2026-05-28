@@ -286,6 +286,7 @@ class SkillListScreen(ModalScreen[str]):
             )
             yield OptionList(id="skill-list")
             with Horizontal(id="skill-buttons"):
+                yield Button("应用", id="btn-skill-apply", variant="success")
                 yield Button("查看详情", id="btn-skill-view", variant="default")
                 yield Button("使用说明", id="btn-skill-help", variant="default")
                 yield Button("返回", id="btn-skill-back", variant="default")
@@ -312,15 +313,27 @@ class SkillListScreen(ModalScreen[str]):
 
         option_list.focus()
 
+    def _get_selected_skill_id(self) -> str:
+        option_list = self.query_one("#skill-list", OptionList)
+        idx = option_list.highlighted
+        if idx is not None:
+            opt = option_list.get_option_at_index(idx)
+            if opt.id:
+                return opt.id
+        return ""
+
     def on_button_pressed(self, event: Button.Pressed):
-        if event.button.id == "btn-skill-view":
-            option_list = self.query_one("#skill-list", OptionList)
-            idx = option_list.highlighted
-            if idx is not None:
-                opt = option_list.get_option_at_index(idx)
-                if opt.id:
-                    self.dismiss(opt.id)
-                    return
+        if event.button.id == "btn-skill-apply":
+            skill_id = self._get_selected_skill_id()
+            if skill_id:
+                self.dismiss(f"__apply__:{skill_id}")
+                return
+            self.app.notify("请先选中一个 Skill", severity="warning", timeout=2)
+        elif event.button.id == "btn-skill-view":
+            skill_id = self._get_selected_skill_id()
+            if skill_id:
+                self.dismiss(skill_id)
+                return
             self.app.notify("请先选中一个 Skill", severity="warning", timeout=2)
         elif event.button.id == "btn-skill-help":
             self.app.push_screen(_SkillHelpScreen())
@@ -681,8 +694,10 @@ class AgentContentScreen(ModalScreen):
         else:
             lines.append(f"  [#ffd93d]ID:[/#ffd93d] {a.get('id', '?')}")
 
-        dg = set(a.get("disabled_groups", []))
-        ds = set(a.get("disabled_servers", []))
+        raw_ag = a.get("allowed_tool_groups")
+        ag = set(raw_ag) if raw_ag is not None else None
+        raw_as = a.get("allowed_mcp_servers")
+        as_ = set(raw_as) if raw_as is not None else None
 
         lines.append("")
         lines.append("[bold #4d96ff]── System Prompt ──[/bold #4d96ff]\n")
@@ -698,9 +713,9 @@ class AgentContentScreen(ModalScreen):
             non_mcp = [g for g in groups if not g["name"].startswith("mcp__") and g["name"] != "(无分组)"]
             if non_mcp:
                 for g in non_mcp:
-                    disabled = g["name"] in dg
-                    dot = "[#ffd93d]○[/#ffd93d]" if disabled else "[#6bcb77]●[/#6bcb77]"
-                    state = "[#ffd93d]已禁用[/#ffd93d]" if disabled else "[#6bcb77]启用[/#6bcb77]"
+                    is_allowed = ag is None or g["name"] in ag
+                    dot = "[#6bcb77]●[/#6bcb77]" if is_allowed else "[#ffd93d]○[/#ffd93d]"
+                    state = "[#6bcb77]启用[/#6bcb77]" if is_allowed else "[#ffd93d]未选中[/#ffd93d]"
                     safe_name = g["name"].replace("[", "\\[")
                     lines.append(f"  {dot} {safe_name} ({g['count']} 个函数) — {state}")
             else:
@@ -711,22 +726,28 @@ class AgentContentScreen(ModalScreen):
             servers = self.agent_core.get_mcp_status()
             if servers:
                 for s in servers:
-                    disabled = s["name"] in ds
-                    dot = "[#ffd93d]○[/#ffd93d]" if disabled else "[#b39ddb]◆[/#b39ddb]"
-                    state = "[#ffd93d]已禁用[/#ffd93d]" if disabled else "[#b39ddb]启用[/#b39ddb]"
+                    is_allowed = as_ is None or s["name"] in as_
+                    dot = "[#b39ddb]◆[/#b39ddb]" if is_allowed else "[#ffd93d]○[/#ffd93d]"
+                    state = "[#b39ddb]启用[/#b39ddb]" if is_allowed else "[#ffd93d]未选中[/#ffd93d]"
                     tc = f" ({s.get('tool_count', 0)} 个工具)" if s.get("tool_count") else ""
                     lines.append(f"  {dot} {s['name']}{tc} — {state}")
             else:
                 lines.append("  [dim #6b7394]无 MCP 服务[/dim #6b7394]")
 
-            skills = self.agent_core.skill_manager.get_manifest()
-            if skills:
+            all_skills = self.agent_core.skill_manager.get_all_skills()
+            if all_skills:
+                raw_sk = a.get("allowed_skills")
+                sk_set = set(raw_sk) if raw_sk is not None else None
                 lines.append("")
                 lines.append("[bold #ffa726]── Skills ──[/bold #ffa726]\n")
-                for sk in skills:
+                for sk in all_skills:
                     safe_name = sk["name"].replace("[", "\\[")
                     safe_desc = sk.get("description", "").replace("[", "\\[")
-                    lines.append(f"  [#ffa726]★[/#ffa726] {safe_name} — [dim]{safe_desc}[/dim]")
+                    is_allowed = sk_set is None or sk["name"] in sk_set
+                    if is_allowed:
+                        lines.append(f"  [#ffa726]★[/#ffa726] {safe_name} — [dim]{safe_desc}[/dim]")
+                    else:
+                        lines.append(f"  [#ffd93d]☆[/#ffd93d] [#8890a8]{safe_name} — {safe_desc}[/#8890a8]  [#ffd93d]未选中[/#ffd93d]")
 
         lines.append("\n[dim #6b7394]按 Esc / Enter 返回[/dim #6b7394]")
         return "\n".join(lines)
@@ -748,6 +769,7 @@ class AgentEditScreen(ModalScreen[str]):
         self.edit_agent = edit_agent
         self._all_group_names: list = []
         self._all_server_names: list = []
+        self._all_skill_names: list = []
 
     def compose(self) -> ComposeResult:
         from textual.widgets._toggle_button import ToggleButton
@@ -776,6 +798,11 @@ class AgentEditScreen(ModalScreen[str]):
             with Horizontal(classes="agent-toggle-buttons"):
                 yield Button("全部启用", id="btn-servers-all", variant="default")
                 yield Button("全部禁用", id="btn-servers-none", variant="default")
+            yield Static("[#c0c0c0]Skills [dim](✓ 注入到 AI 上下文)[/dim]:[/#c0c0c0]")
+            yield self._build_skills_list()
+            with Horizontal(classes="agent-toggle-buttons"):
+                yield Button("全部启用", id="btn-skills-all", variant="default")
+                yield Button("全部禁用", id="btn-skills-none", variant="default")
             with Horizontal(id="preset-save-buttons"):
                 yield Button("保存", id="btn-save-agent", variant="success")
                 yield Button("取消", id="btn-cancel-agent", variant="default")
@@ -783,13 +810,14 @@ class AgentEditScreen(ModalScreen[str]):
     def _build_groups_list(self):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
-        disabled = set(self.edit_agent.get("disabled_groups", [])) if self.edit_agent else set()
+        raw = self.edit_agent.get("allowed_tool_groups") if self.edit_agent else None
+        allowed = set(raw) if raw is not None else None
         groups = self.agent_core.get_tool_groups()
         non_mcp = [g for g in groups if not g["name"].startswith("mcp__") and g["name"] != "(无分组)"]
         selections = []
         for g in non_mcp:
             self._all_group_names.append(g["name"])
-            checked = g["name"] not in disabled
+            checked = allowed is None or g["name"] in allowed
             selections.append(Selection(f"{g['name']} ({g['count']} 个函数)", g["name"], checked))
         if not selections:
             return Static("[dim #6b7394]无可用工具组[/dim #6b7394]", id="agent-groups-select")
@@ -798,17 +826,35 @@ class AgentEditScreen(ModalScreen[str]):
     def _build_servers_list(self):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
-        disabled = set(self.edit_agent.get("disabled_servers", [])) if self.edit_agent else set()
+        raw = self.edit_agent.get("allowed_mcp_servers") if self.edit_agent else None
+        allowed = set(raw) if raw is not None else None
         servers = self.agent_core.get_mcp_status()
         selections = []
         for s in servers:
             self._all_server_names.append(s["name"])
-            checked = s["name"] not in disabled
+            checked = allowed is None or s["name"] in allowed
             label = f"{s['name']}" + (f" ({s['tool_count']} 个工具)" if s.get("tool_count") else "")
             selections.append(Selection(label, s["name"], checked))
         if not selections:
             return Static("[dim #6b7394]无 MCP 服务[/dim #6b7394]", id="agent-servers-select")
         return SelectionList(*selections, id="agent-servers-select")
+
+    def _build_skills_list(self):
+        from textual.widgets import SelectionList
+        from textual.widgets.selection_list import Selection
+        raw = self.edit_agent.get("allowed_skills") if self.edit_agent else None
+        allowed = set(raw) if raw is not None else None
+        all_skills = self.agent_core.skill_manager.get_all_skills()
+        selections = []
+        for s in all_skills:
+            name = s["name"]
+            self._all_skill_names.append(name)
+            checked = allowed is None or name in allowed
+            suffix = " [仅手动]" if s.get("manual_only") else ""
+            selections.append(Selection(f"{name}{suffix} — {s['description'][:40]}", name, checked))
+        if not selections:
+            return Static("[dim #6b7394]无可用 Skills[/dim #6b7394]", id="agent-skills-select")
+        return SelectionList(*selections, id="agent-skills-select")
 
     def on_mount(self):
         self.query_one("#agent-name-input", Input).focus()
@@ -838,6 +884,10 @@ class AgentEditScreen(ModalScreen[str]):
             self._toggle_all("agent-servers-select", self._all_server_names, True)
         elif event.button.id == "btn-servers-none":
             self._toggle_all("agent-servers-select", self._all_server_names, False)
+        elif event.button.id == "btn-skills-all":
+            self._toggle_all("agent-skills-select", self._all_skill_names, True)
+        elif event.button.id == "btn-skills-none":
+            self._toggle_all("agent-skills-select", self._all_skill_names, False)
 
     def _do_save(self):
         import json as _json
@@ -851,18 +901,22 @@ class AgentEditScreen(ModalScreen[str]):
             self.app.notify("请输入 System Prompt", severity="warning", timeout=2)
             return
 
-        disabled_groups = []
-        disabled_servers = []
+        allowed_tool_groups = []
+        allowed_mcp_servers = []
+        allowed_skills = []
         try:
             groups_select = self.query_one("#agent-groups-select", SelectionList)
-            selected_groups = set(groups_select.selected)
-            disabled_groups = [n for n in self._all_group_names if n not in selected_groups]
+            allowed_tool_groups = list(groups_select.selected)
         except Exception:
             pass
         try:
             servers_select = self.query_one("#agent-servers-select", SelectionList)
-            selected_servers = set(servers_select.selected)
-            disabled_servers = [n for n in self._all_server_names if n not in selected_servers]
+            allowed_mcp_servers = list(servers_select.selected)
+        except Exception:
+            pass
+        try:
+            skills_select = self.query_one("#agent-skills-select", SelectionList)
+            allowed_skills = list(skills_select.selected)
         except Exception:
             pass
 
@@ -870,8 +924,9 @@ class AgentEditScreen(ModalScreen[str]):
             "edit_id": self.edit_agent["id"] if self.edit_agent else "",
             "name": name,
             "system_prompt": prompt,
-            "disabled_groups": disabled_groups,
-            "disabled_servers": disabled_servers,
+            "allowed_tool_groups": allowed_tool_groups,
+            "allowed_mcp_servers": allowed_mcp_servers,
+            "allowed_skills": allowed_skills,
         }, ensure_ascii=False)
         self.dismiss(result)
 

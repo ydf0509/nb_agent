@@ -10,11 +10,11 @@ MCP 客户端管理器 — 连接多个 MCP Server，统一管理工具
 import asyncio
 import contextlib
 import json
-import logging
 import os
-from typing import Dict, List, Optional, Any
+import sys
+from typing import Dict, List, Optional, Any, TextIO
 
-logger = logging.getLogger(__name__)
+from nb_agent.utils.loggers import logger_mcp
 
 try:
     from mcp import ClientSession
@@ -22,7 +22,7 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
-    logger.warning("MCP SDK 未安装，请运行: pip install mcp")
+    logger_mcp.warning("MCP SDK 未安装，请运行: pip install mcp")
 
 try:
     from mcp.client.sse import sse_client
@@ -57,7 +57,8 @@ class MCPManager:
         self._stdio_exit_stack = contextlib.AsyncExitStack()
         self._project_root = ""
         self._all_configs: Dict[str, dict] = {}
-        self._disabled_servers: set = set()
+        self._allowed_servers: set = None
+        self.errlog: Optional[TextIO] = None
 
     async def connect_all(self, mcp_config: dict, project_root: str = ""):
         """根据配置连接所有 MCP Server
@@ -69,7 +70,7 @@ class MCPManager:
         self._all_configs = dict(mcp_config)
 
         if not MCP_AVAILABLE:
-            logger.error("MCP SDK 未安装，跳过所有 MCP 连接")
+            logger_mcp.error("MCP SDK 未安装，跳过所有 MCP 连接")
             return
 
         stdio_tasks = []
@@ -107,22 +108,22 @@ class MCPManager:
             else:
                 await self._connect_stdio(name, cfg, info)
 
-            logger.info(f"MCP [{name}] 已连接 ({server_type})，{len(info.tools)} 个工具")
+            logger_mcp.info(f"MCP [{name}] 已连接 ({server_type})，{len(info.tools)} 个工具")
 
         except asyncio.TimeoutError:
             info.error = "连接超时"
-            logger.error(f"MCP [{name}] 连接超时")
+            logger_mcp.error(f"MCP [{name}] 连接超时")
             await self._cleanup_remote(info)
         except FileNotFoundError as e:
             info.error = f"命令未找到: {e}"
-            logger.error(f"MCP [{name}] {info.error}")
+            logger_mcp.error(f"MCP [{name}] {info.error}")
         except BaseException as e:
             if isinstance(e, BaseExceptionGroup):
                 msgs = [f"{type(se).__name__}: {se}" for se in e.exceptions]
                 info.error = "; ".join(msgs)
             else:
                 info.error = f"{type(e).__name__}: {e}"
-            logger.error(f"MCP [{name}] 连接失败: {info.error}")
+            logger_mcp.error(f"MCP [{name}] 连接失败: {info.error}")
             await self._cleanup_remote(info)
 
     @staticmethod
@@ -155,7 +156,8 @@ class MCPManager:
             cwd=cwd,
         )
 
-        transport = stdio_client(server_params)
+        errlog = self.errlog if self.errlog and not self.errlog.closed else sys.stderr
+        transport = stdio_client(server_params, errlog=errlog)
         streams = await self._stdio_exit_stack.enter_async_context(transport)
         session = ClientSession(*streams)
         await self._stdio_exit_stack.enter_async_context(session)
@@ -241,23 +243,27 @@ class MCPManager:
         self.servers.clear()
 
     def toggle_server(self, name: str) -> bool:
-        if name in self._disabled_servers:
-            self._disabled_servers.discard(name)
-            return True
-        else:
-            self._disabled_servers.add(name)
+        """切换 MCP Server 启用/禁用，返回 True=已启用"""
+        if self._allowed_servers is None:
+            all_names = set(self.servers.keys())
+            self._allowed_servers = all_names - {name}
             return False
+        if name in self._allowed_servers:
+            self._allowed_servers.discard(name)
+            return False
+        self._allowed_servers.add(name)
+        return True
 
-    def is_server_disabled(self, name: str) -> bool:
-        return name in self._disabled_servers
+    def is_server_enabled(self, name: str) -> bool:
+        return self._allowed_servers is None or name in self._allowed_servers
 
-    def set_disabled_servers(self, names: list):
-        self._disabled_servers = set(names)
+    def set_allowed_servers(self, names: list):
+        self._allowed_servers = set(names) if names is not None else None
 
     def get_all_tools_openai_format(self) -> List[dict]:
         tools = []
         for server_name, info in self.servers.items():
-            if not info.connected or server_name in self._disabled_servers:
+            if not info.connected or (self._allowed_servers is not None and server_name not in self._allowed_servers):
                 continue
             for t in info.tools:
                 input_schema = {}
@@ -300,7 +306,7 @@ class MCPManager:
                 "connected": info.connected,
                 "tools_count": len(info.tools),
                 "error": info.error,
-                "disabled": name in self._disabled_servers,
+                "disabled": self._allowed_servers is not None and name not in self._allowed_servers,
                 "config_disabled": False,
             })
         for name, cfg in self._all_configs.items():
@@ -324,8 +330,8 @@ class MCPManager:
         server_name = parts[1]
         tool_name = parts[2]
 
-        if server_name in self._disabled_servers:
-            return f"[已拦截] MCP Server '{server_name}' 已被禁用"
+        if self._allowed_servers is not None and server_name not in self._allowed_servers:
+            return f"[已拦截] MCP Server '{server_name}' 不在允许列表中"
 
         info = self.servers.get(server_name)
         if not info or not info.connected or not info.session:

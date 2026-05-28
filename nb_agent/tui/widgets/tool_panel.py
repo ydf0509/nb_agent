@@ -11,9 +11,7 @@ from .inputs import ClickableStatic
 
 
 def _fmt_tokens(n: int) -> str:
-    if n >= 1000:
-        return f"{n / 1000:.1f}k"
-    return str(n)
+    return f"{n / 1000:.1f}k"
 
 
 class ToolPanel(Vertical):
@@ -40,7 +38,7 @@ class ToolPanel(Vertical):
 
     def update_content(self, last_elapsed: float = 0.0):
         t = self.agent.get_token_usage()
-        if t['total'] == 0:
+        if t['total'] == 0 and t.get('last_rounds', 0) == 0:
             token_text = "[bold #ffd93d]✦ Token:[/bold #ffd93d] [#6b7394]等待对话...[/#6b7394]"
         else:
             elapsed_str = f" | 耗时{last_elapsed:.1f}s" if last_elapsed > 0 else ""
