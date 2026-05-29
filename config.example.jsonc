@@ -25,29 +25,44 @@
     "streaming": true
   },
 
-  // MCP Server 配置（可选）
+  // MCP Server 配置（可选），取消注释即可启用
   "mcp": {
+    // 本地 stdio 方式启动自定义 MCP Server（FastMCP 编写）
+    // "bookmark": {
+    //   "type": "local",
+    //   "command": ["python", "mcp_servers/bookmark_server.py"],
+    //   "enabled": true
+    // },
+    // SSE 方式连接远程 MCP Server
+    // "web-search": {
+    //   "type": "sse",
+    //   "url": "http://localhost:3000/sse",
+    //   "enabled": true
+    // },
+    // HTTP 方式连接远程 MCP Server（streamableHttp 协议，http 是别名）
+    // 先独立启动服务：uvx nbrag --transport streamable-http --port 9101
+    // "nbrag": {
+    //   "type": "http",
+    //   "url": "http://localhost:9101/mcp"
+    // },
     // 文件系统 MCP：让 AI 读写指定目录的文件
     // ⚠ 必须至少提供一个绝对路径，AI 只能访问列出的目录
     // "filesystem": {
-    //   "command": "npx",
-    //   "args": [
-    //     "-y",
-    //     "@modelcontextprotocol/server-filesystem",
-    //     "/path/to/your/project"
-    //   ]
+    //   "type": "local",
+    //   "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/project"]
     // },
+    // Serena（语义级编程 MCP：代码索引、符号导航、跨文件重构、智能编辑）
+    // 安装: uv tool install -p 3.12 serena-agent@latest --prerelease=allow
     // "serena": {
     //   "type": "local",
     //   "command": "serena",
     //   "args": ["start-mcp-server", "--project-from-cwd"],
     //   "enabled": false
     // },
-    // "rag": {
+    // context7（实时文档查询 MCP：查任意库的官方文档和代码示例）
+    // "context7": {
     //   "type": "local",
-    //   "command": "uvx",
-    //   "args": ["nb_agentic_rag"],
-    //   "env": { "NB_RAG_API_KEY": "sk-xxx" },
+    //   "command": ["npx", "-y", "@upstash/context7-mcp@latest"],
     //   "enabled": false
     // }
   },

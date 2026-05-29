@@ -1,10 +1,10 @@
 """
 MCP 客户端管理器 — 连接多个 MCP Server，统一管理工具
 
-支持三种传输方式:
+支持四种传输方式:
   - local (stdio): 启动子进程，通过 stdin/stdout 通信
   - sse: 通过 SSE 连接远程 MCP Server
-  - streamableHttp: 通过 Streamable HTTP 连接远程 MCP Server
+  - streamableHttp / http: 通过 Streamable HTTP 连接远程 MCP Server（http 是 streamableHttp 的别名）
 """
 
 import asyncio
@@ -80,7 +80,7 @@ class MCPManager:
             if not cfg.get("enabled", True):
                 continue
             server_type = cfg.get("type", "local")
-            if server_type in ("sse", "streamableHttp", "streamable_http"):
+            if server_type in ("sse", "streamableHttp", "streamable_http", "http"):
                 remote_servers.append((name, cfg))
             else:
                 stdio_tasks.append(self.connect_server(name, cfg))
@@ -103,7 +103,7 @@ class MCPManager:
         try:
             if server_type in ("sse",):
                 await self._connect_sse(name, cfg, info)
-            elif server_type in ("streamableHttp", "streamable_http"):
+            elif server_type in ("streamableHttp", "streamable_http", "http"):
                 await self._connect_streamable_http(name, cfg, info)
             else:
                 await self._connect_stdio(name, cfg, info)
