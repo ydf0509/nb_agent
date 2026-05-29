@@ -207,6 +207,16 @@ nb_agent 支持四种 MCP 传输方式：
         "type": "local",
         "command": ["serena", "start-mcp-server", "--project", "D:/codes/my_project"],
         "enabled": false
+    },
+
+    // 示例 6：command + args 拆分写法（兼容 Cursor/Cline 风格配置，直接复制迁移）
+    // 第三方配置常有: command="npx", args=["-y", "@xxx/server", "/path"]
+    // 拆过来只需把 command 和 args 原样搬过来即可，不需要手动合并
+    "my-mcp": {
+        "type": "local",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "D:/codes/my_project"],
+        "enabled": false
     }
 }
 ```
