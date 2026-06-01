@@ -33,6 +33,7 @@ class AgentConfig(SQLModel, table=True):
     id: str = Field(primary_key=True)
     name: str = Field(default="")
     system_prompt: str = Field(default="")
+    default_model: str = Field(default="")
     allowed_tool_groups_json: str = Field(default="null")
     allowed_mcp_servers_json: str = Field(default="null")
     allowed_skills_json: str = Field(default="null")

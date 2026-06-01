@@ -706,6 +706,12 @@ class AgentContentScreen(ModalScreen):
             safe = line.replace("[", "\\[")
             lines.append(f"[#c0c0c0]{safe}[/#c0c0c0]")
 
+        default_model = a.get("default_model", "")
+        if default_model:
+            lines.append("")
+            lines.append(f"[bold #4d96ff]── 默认模型 ──[/bold #4d96ff]\n")
+            lines.append(f"  [bold #00d4aa]{default_model}[/bold #00d4aa]")
+
         if self.agent_core:
             lines.append("")
             lines.append("[bold #6bcb77]── 工具/函数 ──[/bold #6bcb77]\n")
@@ -757,7 +763,7 @@ class AgentContentScreen(ModalScreen):
 
 
 class AgentEditScreen(ModalScreen[str]):
-    """新建/编辑 Agent 弹窗（含工具组和 MCP 勾选）"""
+    """新建/编辑 Agent 弹窗（含工具组和 MCP 勾选 + 默认模型选择）"""
 
     BINDINGS = [
         Binding("escape", "cancel", "取消"),
@@ -770,6 +776,7 @@ class AgentEditScreen(ModalScreen[str]):
         self._all_group_names: list = []
         self._all_server_names: list = []
         self._all_skill_names: list = []
+        self._selected_model = ""
 
     def compose(self) -> ComposeResult:
         from textual.widgets._toggle_button import ToggleButton
@@ -784,6 +791,8 @@ class AgentEditScreen(ModalScreen[str]):
                 placeholder="如：代码审查专家",
                 id="agent-name-input",
             )
+            yield Static("[#c0c0c0]默认模型 [dim](↑↓ 选择)[/dim]:[/#c0c0c0]")
+            yield OptionList(id="agent-model-select")
             yield Static("[#c0c0c0]System Prompt:[/#c0c0c0]")
             from textual.widgets import TextArea
             prompt = self.edit_agent["system_prompt"] if self.edit_agent else ""
@@ -858,6 +867,27 @@ class AgentEditScreen(ModalScreen[str]):
 
     def on_mount(self):
         self.query_one("#agent-name-input", Input).focus()
+        self._refresh_model_list()
+
+    def _refresh_model_list(self):
+        """刷新模型列表，选中当前 Agent 的 default_model 或当前模型"""
+        option_list = self.query_one("#agent-model-select", OptionList)
+        option_list.clear_options()
+        grouped = self.agent_core.get_models_grouped()
+        edit_model = self.edit_agent.get("default_model", "") if self.edit_agent else ""
+        current = edit_model or self.agent_core.get_model_name()
+        self._selected_model = current
+
+        for provider_name, models in grouped.items():
+            option_list.add_option(Option(
+                Text(f"── {provider_name} ──", style="dim #6b7394"), disabled=True
+            ))
+            for m in models:
+                if m.id == current:
+                    label = Text(f"  ▶ {m.id} ({m.name})", style="bold #00d4aa")
+                else:
+                    label = Text(f"    {m.id} ({m.name})", style="#c0c0c0")
+                option_list.add_option(Option(label, id=m.id))
 
     def _toggle_all(self, widget_id: str, all_names: list, select: bool):
         from textual.widgets import SelectionList
@@ -924,11 +954,16 @@ class AgentEditScreen(ModalScreen[str]):
             "edit_id": self.edit_agent["id"] if self.edit_agent else "",
             "name": name,
             "system_prompt": prompt,
+            "default_model": self._selected_model,
             "allowed_tool_groups": allowed_tool_groups,
             "allowed_mcp_servers": allowed_mcp_servers,
             "allowed_skills": allowed_skills,
         }, ensure_ascii=False)
         self.dismiss(result)
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected):
+        if event.option.id:
+            self._selected_model = event.option.id
 
     def action_cancel(self):
         self.dismiss("")

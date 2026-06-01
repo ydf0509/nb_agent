@@ -688,6 +688,7 @@ class AgentCore:
             "id": self.DEFAULT_AGENT_ID,
             "name": "默认助手",
             "system_prompt": self._base_prompt,
+            "default_model": self.current_model.id if self.current_model else "",
             "allowed_tool_groups": None,
             "allowed_mcp_servers": None,
             "allowed_skills": None,
@@ -698,12 +699,14 @@ class AgentCore:
         return result
 
     def save_agent(self, name: str, system_prompt: str,
+                   default_model: str = "",
                    allowed_tool_groups: list = None,
                    allowed_mcp_servers: list = None,
                    allowed_skills: list = None) -> str:
         agent_id = str(uuid.uuid4())[:8]
         self.session_store.create_agent(
             agent_id, name, system_prompt,
+            default_model=default_model,
             allowed_tool_groups=allowed_tool_groups,
             allowed_mcp_servers=allowed_mcp_servers,
             allowed_skills=allowed_skills,
@@ -711,17 +714,21 @@ class AgentCore:
         return agent_id
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None):
         self.session_store.update_agent(
             agent_id, name, system_prompt,
+            default_model=default_model,
             allowed_tool_groups=allowed_tool_groups,
             allowed_mcp_servers=allowed_mcp_servers,
             allowed_skills=allowed_skills,
         )
         if self.current_agent_id == agent_id:
             self.current_agent_name = name
+            if default_model:
+                self.switch_model(default_model)
             self.allowed_skills = set(allowed_skills) if allowed_skills is not None else None
             self.system_prompt = self._build_system_prompt(system_prompt)
             self.messages[0] = {"role": "system", "content": self.system_prompt}
@@ -737,11 +744,12 @@ class AgentCore:
         return True
 
     def apply_agent(self, agent_id: str):
-        """应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关，新建会话"""
+        """应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关 + 默认模型，新建会话"""
         if agent_id == self.DEFAULT_AGENT_ID:
             agent_data = {
                 "name": "默认助手",
                 "system_prompt": self._base_prompt,
+                "default_model": "",
                 "allowed_tool_groups": None,
                 "allowed_mcp_servers": None,
                 "allowed_skills": None,
@@ -759,6 +767,10 @@ class AgentCore:
         raw_groups = agent_data.get("allowed_tool_groups")
         self.allowed_tool_groups = set(raw_groups) if raw_groups is not None else None
         self.mcp_manager.set_allowed_servers(agent_data.get("allowed_mcp_servers"))
+
+        default_model = agent_data.get("default_model", "")
+        if default_model:
+            self.switch_model(default_model)
 
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self.total_prompt_tokens = 0

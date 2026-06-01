@@ -6,7 +6,7 @@ import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import SQLModel, Session, create_engine, select, text
 
 from .models import ChatSession, Message, AgentConfig
 
@@ -35,6 +35,16 @@ class SessionStore:
 
         self._engine = create_engine(self._url, connect_args=connect_args)
         SQLModel.metadata.create_all(self._engine)
+        self._run_migrations()
+
+    def _run_migrations(self):
+        """数据库迁移：新增字段等，防止旧数据库 schema 不匹配报错"""
+        try:
+            with self._engine.connect() as conn:
+                conn.execute(text("ALTER TABLE agent_configs ADD COLUMN default_model VARCHAR NOT NULL DEFAULT ''"))
+                conn.commit()
+        except Exception:
+            pass
 
     def _session(self) -> Session:
         return Session(self._engine)
@@ -124,6 +134,7 @@ class SessionStore:
     # ==================== Agent ====================
 
     def create_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None,
@@ -132,6 +143,7 @@ class SessionStore:
         with self._session() as s:
             s.add(AgentConfig(
                 id=agent_id, name=name, system_prompt=system_prompt,
+                default_model=default_model,
                 allowed_tool_groups_json=json.dumps(allowed_tool_groups),
                 allowed_mcp_servers_json=json.dumps(allowed_mcp_servers),
                 allowed_skills_json=json.dumps(allowed_skills),
@@ -164,6 +176,7 @@ class SessionStore:
             return self._deserialize_agent(row.model_dump())
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None):
@@ -173,6 +186,7 @@ class SessionStore:
             if row:
                 row.name = name
                 row.system_prompt = system_prompt
+                row.default_model = default_model
                 row.allowed_tool_groups_json = json.dumps(allowed_tool_groups)
                 row.allowed_mcp_servers_json = json.dumps(allowed_mcp_servers)
                 row.allowed_skills_json = json.dumps(allowed_skills)

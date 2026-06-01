@@ -575,14 +575,15 @@ class AgentApp(App):
         edit_id = data.get("edit_id", "")
         name = data["name"]
         prompt = data["system_prompt"]
+        default_model = data.get("default_model", "")
         atg = data.get("allowed_tool_groups")
         ams = data.get("allowed_mcp_servers")
         ask = data.get("allowed_skills")
         if edit_id:
-            self.agent.update_agent(edit_id, name, prompt, atg, ams, ask)
+            self.agent.update_agent(edit_id, name, prompt, default_model, atg, ams, ask)
             self.notify(f"已更新 Agent: {name}", timeout=3)
         else:
-            self.agent.save_agent(name, prompt, atg, ams, ask)
+            self.agent.save_agent(name, prompt, default_model, atg, ams, ask)
             self.notify(f"已创建 Agent: {name}", timeout=3)
         self.query_one("#user-input", ChatInput).focus()
 
