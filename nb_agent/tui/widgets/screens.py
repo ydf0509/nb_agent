@@ -786,7 +786,7 @@ class AgentEditScreen(ModalScreen[str]):
             )
             yield Static("[#c0c0c0]System Prompt:[/#c0c0c0]")
             from textual.widgets import TextArea
-            prompt = self.edit_agent["system_prompt"] if self.edit_agent else self.agent_core._base_prompt
+            prompt = self.edit_agent["system_prompt"] if self.edit_agent else ""
             yield TextArea(prompt, id="agent-prompt-input")
             yield Static("[#c0c0c0]工具组 [dim](✓ 启用)[/dim]:[/#c0c0c0]")
             yield self._build_groups_list()
@@ -811,7 +811,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_tool_groups") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         groups = self.agent_core.get_tool_groups()
         non_mcp = [g for g in groups if not g["name"].startswith("mcp__") and g["name"] != "(无分组)"]
         selections = []
@@ -827,7 +827,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_mcp_servers") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         servers = self.agent_core.get_mcp_status()
         selections = []
         for s in servers:
@@ -843,7 +843,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_skills") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         all_skills = self.agent_core.skill_manager.get_all_skills()
         selections = []
         for s in all_skills:

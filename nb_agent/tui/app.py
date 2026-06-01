@@ -87,7 +87,7 @@ class AgentApp(App):
         Binding("ctrl+l", "clear_chat", "清屏", show=True),
         Binding("f1", "show_help", "帮助", show=True),
         Binding("f2", "show_skills", "Skills", show=True),
-        Binding("f4", "show_agents", "Agent", show=True),
+        Binding("f4", "show_agents", "Agents", show=True),
         Binding("ctrl+q", "quit", "退出", show=True, priority=True),
     ]
 

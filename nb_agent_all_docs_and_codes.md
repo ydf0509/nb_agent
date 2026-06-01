@@ -1,7 +1,7 @@
 ﻿
 # 🤖 AI 上下文阅读协议 (由 nb_ai_context 生成)
 
-> **此文档生成时间**：2026-05-29 18:32:01
+> **此文档生成时间**：2026-05-31 14:55:23
 > **系统指令**：你正在解析一份由工具 **`nb_ai_context`** 自动生成的**结构化项目快照**。
 > **文档性质**：这**不是**一份普通的面向人类的文档，而是专为 AI 大模型（LLM）设计的上下文数据流。它将项目文档、源代码和 AST 架构元数据进行了特殊的结构化合并，请开启"代码解析器"的心智模式。
 
@@ -6030,6 +6030,7 @@ AgentEditScreen {
 
 `````python
 
+
 `````
 
 --- **end of file: nb_agent/tui/__init__.py** (project: nb_agent) --- 
@@ -8157,6 +8158,16 @@ nb_agent 支持四种 MCP 传输方式：
     "serena": {
         "type": "local",
         "command": ["serena", "start-mcp-server", "--project", "D:/codes/my_project"],
+        "enabled": false
+    },
+
+    // 示例 6：command + args 拆分写法（兼容 Cursor/Cline 风格配置，直接复制迁移）
+    // 第三方配置常有: command="npx", args=["-y", "@xxx/server", "/path"]
+    // 拆过来只需把 command 和 args 原样搬过来即可，不需要手动合并
+    "my-mcp": {
+        "type": "local",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "D:/codes/my_project"],
         "enabled": false
     }
 }
