@@ -1,7 +1,7 @@
 ﻿
 # 🤖 AI 上下文阅读协议 (由 nb_ai_context 生成)
 
-> **此文档生成时间**：2026-05-31 14:55:23
+> **此文档生成时间**：2026-06-01 19:01:26
 > **系统指令**：你正在解析一份由工具 **`nb_ai_context`** 自动生成的**结构化项目快照**。
 > **文档性质**：这**不是**一份普通的面向人类的文档，而是专为 AI 大模型（LLM）设计的上下文数据流。它将项目文档、源代码和 AST 架构元数据进行了特殊的结构化合并，请开启"代码解析器"的心智模式。
 
@@ -144,11 +144,11 @@ Agent 核心：
 - `def register_tool(self, name: str, func: Callable, description: str, parameters: dict, group: str = '')`
 - `def get_agents(self) -> list`
   - *返回所有 Agent（含默认），当前使用的标记 is_current*
-- `def save_agent(self, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None) -> str`
-- `def update_agent(self, agent_id: str, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
+- `def save_agent(self, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None) -> str`
+- `def update_agent(self, agent_id: str, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
 - `def delete_agent(self, agent_id: str) -> bool`
 - `def apply_agent(self, agent_id: str)`
-  - *应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关，新建会话*
+  - *应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关 + 默认模型，新建会话*
 
 **Class Variables (2):**
 - `MAX_TOOL_ROUNDS = 30`
@@ -276,6 +276,10 @@ Entry Points (not imported by other project files):
 # nb_agent
 
 **手写 ReAct Agent 框架 + 赛博朋克 TUI** — 不依赖 LangChain，用纯 Python 实现 LLM ↔ Tool 循环。
+
+nb_agent tui截图：
+截图是nb-agent接入serena这个mcp，变身为ai coding工具。
+![alt text](1c93130f53f4cca8d290198dd426926a.png)
 
 ## 特性
 
@@ -479,6 +483,16 @@ nb_agent run "帮我分析代码性能"        # 非交互模式
 nb_agent sessions list                # 查看历史会话
 ```
 
+
+## Agent 管理功能
+
+支持创建多个 **Agent 预设**，每个 Agent 是独立的一套配置组合（System Prompt + 工具组开关 + MCP 开关 + Skills 开关 + 默认模型），让 AI 在不同场景下拥有不同的身份和能力边界。按 **F4** 管理。
+从不同的agent创建会话，适应不同的场景。
+例如你可以通过接入serena mcp后，专门创建一个agent，用于ai coding。
+通过接入 web search mcp后，专门创建一个agent，用于搜索互联网娱乐八卦新闻。
+通过接入 nbrag mcp后，专门创建一个agent，用于rag知识库检索。
+不同的agent绑定不同的System Prompt + 工具组开关 + MCP 开关 + Skills 开关，可以减少无关工具暴露给ai，节约很多tokens，提高ai的决策效率。
+
 ## TUI 快捷键
 
 | 快捷键 | 功能 |
@@ -559,7 +573,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 - 多agents管理(每个agent独立配置 提示词+ 工具组+ MCP Server+ Skills ，快速从不同的agent创建会话应对不同的场景)
 - **接入门槛极低**：`pip install nb_agent && nb_agent` 即可，集成到项目只需几行代码
 
-### nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
+### 3 nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
 
 **能。** 通过接入第三方编程 MCP，nb_agent 可以化身为终端编程助手。
 
@@ -597,6 +611,9 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 ### nb_agent 支不支持 RAG 知识库 呀？
 
 **支持。** nbrag 是一个独立的 Agentic RAG MCP Server（12 个工具），可导入代码、文档等任意文本，尤其对 Python 项目有奇效（AST 自动解析 class/function 作用域）。在 nb_agent 的 config.jsonc 中配置为 MCP Server 即可使用——MCP 暴露了工具描述和入参，AI 直接就能理解怎么用。如果想更进一步，把 `skills/nbrag-workflow/SKILL.md` 复制到 `.nb_agent/skills/nbrag-workflow/SKILL.md`，AI 会按最佳检索策略打组合拳。
+
+nbrag作为知识库，吊打传统native知识库， 所以nb_agent支持mcp，nbrag是rag mcp，所以nb_agent 支持知识库
+
 
 ## License
 
@@ -1352,11 +1369,11 @@ Agent 核心：
 - `def register_tool(self, name: str, func: Callable, description: str, parameters: dict, group: str = '')`
 - `def get_agents(self) -> list`
   - *返回所有 Agent（含默认），当前使用的标记 is_current*
-- `def save_agent(self, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None) -> str`
-- `def update_agent(self, agent_id: str, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
+- `def save_agent(self, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None) -> str`
+- `def update_agent(self, agent_id: str, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
 - `def delete_agent(self, agent_id: str) -> bool`
 - `def apply_agent(self, agent_id: str)`
-  - *应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关，新建会话*
+  - *应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关 + 默认模型，新建会话*
 
 **Class Variables (2):**
 - `MAX_TOOL_ROUNDS = 30`
@@ -2056,6 +2073,7 @@ class AgentCore:
             "id": self.DEFAULT_AGENT_ID,
             "name": "默认助手",
             "system_prompt": self._base_prompt,
+            "default_model": self.current_model.id if self.current_model else "",
             "allowed_tool_groups": None,
             "allowed_mcp_servers": None,
             "allowed_skills": None,
@@ -2066,12 +2084,14 @@ class AgentCore:
         return result
 
     def save_agent(self, name: str, system_prompt: str,
+                   default_model: str = "",
                    allowed_tool_groups: list = None,
                    allowed_mcp_servers: list = None,
                    allowed_skills: list = None) -> str:
         agent_id = str(uuid.uuid4())[:8]
         self.session_store.create_agent(
             agent_id, name, system_prompt,
+            default_model=default_model,
             allowed_tool_groups=allowed_tool_groups,
             allowed_mcp_servers=allowed_mcp_servers,
             allowed_skills=allowed_skills,
@@ -2079,17 +2099,21 @@ class AgentCore:
         return agent_id
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None):
         self.session_store.update_agent(
             agent_id, name, system_prompt,
+            default_model=default_model,
             allowed_tool_groups=allowed_tool_groups,
             allowed_mcp_servers=allowed_mcp_servers,
             allowed_skills=allowed_skills,
         )
         if self.current_agent_id == agent_id:
             self.current_agent_name = name
+            if default_model:
+                self.switch_model(default_model)
             self.allowed_skills = set(allowed_skills) if allowed_skills is not None else None
             self.system_prompt = self._build_system_prompt(system_prompt)
             self.messages[0] = {"role": "system", "content": self.system_prompt}
@@ -2105,11 +2129,12 @@ class AgentCore:
         return True
 
     def apply_agent(self, agent_id: str):
-        """应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关，新建会话"""
+        """应用 Agent 配置：替换 system prompt + 工具/MCP/Skills 开关 + 默认模型，新建会话"""
         if agent_id == self.DEFAULT_AGENT_ID:
             agent_data = {
                 "name": "默认助手",
                 "system_prompt": self._base_prompt,
+                "default_model": "",
                 "allowed_tool_groups": None,
                 "allowed_mcp_servers": None,
                 "allowed_skills": None,
@@ -2127,6 +2152,10 @@ class AgentCore:
         raw_groups = agent_data.get("allowed_tool_groups")
         self.allowed_tool_groups = set(raw_groups) if raw_groups is not None else None
         self.mcp_manager.set_allowed_servers(agent_data.get("allowed_mcp_servers"))
+
+        default_model = agent_data.get("default_model", "")
+        if default_model:
+            self.switch_model(default_model)
 
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self.total_prompt_tokens = 0
@@ -3108,11 +3137,12 @@ SQLModel 数据模型 — 会话、消息、Agent 配置
 ##### 📌 `class AgentConfig(SQLModel)`
 *Line: 30*
 
-**Class Variables (10):**
+**Class Variables (11):**
 - `__tablename__ = 'agent_configs'`
 - `id: str = Field(primary_key=True)`
 - `name: str = Field(default='')`
 - `system_prompt: str = Field(default='')`
+- `default_model: str = Field(default='')`
 - `allowed_tool_groups_json: str = Field(default='null')`
 - `allowed_mcp_servers_json: str = Field(default='null')`
 - `allowed_skills_json: str = Field(default='null')`
@@ -3159,6 +3189,7 @@ class AgentConfig(SQLModel, table=True):
     id: str = Field(primary_key=True)
     name: str = Field(default="")
     system_prompt: str = Field(default="")
+    default_model: str = Field(default="")
     allowed_tool_groups_json: str = Field(default="null")
     allowed_mcp_servers_json: str = Field(default="null")
     allowed_skills_json: str = Field(default="null")
@@ -3197,6 +3228,7 @@ class AgentConfig(SQLModel, table=True):
 - `from sqlmodel import Session`
 - `from sqlmodel import create_engine`
 - `from sqlmodel import select`
+- `from sqlmodel import text`
 - `from models import ChatSession`
 - `from models import Message`
 - `from models import AgentConfig`
@@ -3221,10 +3253,10 @@ class AgentConfig(SQLModel, table=True):
 - `def save_message(self, session_id: str, role: str, content: str, reasoning: str = '', tool_calls: Optional[list] = None)`
 - `def get_messages(self, session_id: str) -> List[Dict]`
 - `def delete_session(self, session_id: str)`
-- `def create_agent(self, agent_id: str, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None, is_builtin: bool = False) -> str`
+- `def create_agent(self, agent_id: str, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None, is_builtin: bool = False) -> str`
 - `def list_agents(self) -> List[dict]`
 - `def get_agent(self, agent_id: str) -> Optional[dict]`
-- `def update_agent(self, agent_id: str, name: str, system_prompt: str, allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
+- `def update_agent(self, agent_id: str, name: str, system_prompt: str, default_model: str = '', allowed_tool_groups: list = None, allowed_mcp_servers: list = None, allowed_skills: list = None)`
 - `def delete_agent(self, agent_id: str)`
 
 
@@ -3239,7 +3271,7 @@ import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import SQLModel, Session, create_engine, select, text
 
 from .models import ChatSession, Message, AgentConfig
 
@@ -3268,6 +3300,16 @@ class SessionStore:
 
         self._engine = create_engine(self._url, connect_args=connect_args)
         SQLModel.metadata.create_all(self._engine)
+        self._run_migrations()
+
+    def _run_migrations(self):
+        """数据库迁移：新增字段等，防止旧数据库 schema 不匹配报错"""
+        try:
+            with self._engine.connect() as conn:
+                conn.execute(text("ALTER TABLE agent_configs ADD COLUMN default_model VARCHAR NOT NULL DEFAULT ''"))
+                conn.commit()
+        except Exception:
+            pass
 
     def _session(self) -> Session:
         return Session(self._engine)
@@ -3357,6 +3399,7 @@ class SessionStore:
     # ==================== Agent ====================
 
     def create_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None,
@@ -3365,6 +3408,7 @@ class SessionStore:
         with self._session() as s:
             s.add(AgentConfig(
                 id=agent_id, name=name, system_prompt=system_prompt,
+                default_model=default_model,
                 allowed_tool_groups_json=json.dumps(allowed_tool_groups),
                 allowed_mcp_servers_json=json.dumps(allowed_mcp_servers),
                 allowed_skills_json=json.dumps(allowed_skills),
@@ -3397,6 +3441,7 @@ class SessionStore:
             return self._deserialize_agent(row.model_dump())
 
     def update_agent(self, agent_id: str, name: str, system_prompt: str,
+                     default_model: str = "",
                      allowed_tool_groups: list = None,
                      allowed_mcp_servers: list = None,
                      allowed_skills: list = None):
@@ -3406,6 +3451,7 @@ class SessionStore:
             if row:
                 row.name = name
                 row.system_prompt = system_prompt
+                row.default_model = default_model
                 row.allowed_tool_groups_json = json.dumps(allowed_tool_groups)
                 row.allowed_mcp_servers_json = json.dumps(allowed_mcp_servers)
                 row.allowed_skills_json = json.dumps(allowed_skills)
@@ -4351,7 +4397,7 @@ nb_agent TUI 主应用
 - `TITLE = 'nb_agent'`
 - `CSS_PATH = 'styles.tcss'`
 - `COMMANDS = App.COMMANDS | {AgentCommands}`
-- `BINDINGS = [Binding('ctrl+j', 'send_msg', '发送', show=True, priority=True), Binding('ctrl+k', 'stop_ai', '终止', show=True, priority=True), Binding('ctrl+up', 'edit_last', '编辑上轮', show=True, priority=True), Binding('tab', 'select_model', '模型', show=True, priority=True), Binding('ctrl+n', 'new_session', '新建', show=True, priority=True), Binding('ctrl+r', 'resume_session', '恢复', show=True, priority=True), Binding('ctrl+e', 'toggle_input', '展开', show=True, priority=True), Binding('ctrl+l', 'clear_chat', '清屏', show=True), Binding('f1', 'show_help', '帮助', show=True), Binding('f2', 'show_skills', 'Skills', show=True), Binding('f4', 'show_agents', 'Agent', show=True), Binding('ctrl+q', 'quit', '退出', show=True, priority=True)]`
+- `BINDINGS = [Binding('ctrl+j', 'send_msg', '发送', show=True, priority=True), Binding('ctrl+k', 'stop_ai', '终止', show=True, priority=True), Binding('ctrl+up', 'edit_last', '编辑上轮', show=True, priority=True), Binding('tab', 'select_model', '模型', show=True, priority=True), Binding('ctrl+n', 'new_session', '新建', show=True, priority=True), Binding('ctrl+r', 'resume_session', '恢复', show=True, priority=True), Binding('ctrl+e', 'toggle_input', '展开', show=True, priority=True), Binding('ctrl+l', 'clear_chat', '清屏', show=True), Binding('f1', 'show_help', '帮助', show=True), Binding('f2', 'show_skills', 'Skills', show=True), Binding('f4', 'show_agents', 'Agents', show=True), Binding('ctrl+q', 'quit', '退出', show=True, priority=True)]`
 
 
 ---
@@ -4446,7 +4492,7 @@ class AgentApp(App):
         Binding("ctrl+l", "clear_chat", "清屏", show=True),
         Binding("f1", "show_help", "帮助", show=True),
         Binding("f2", "show_skills", "Skills", show=True),
-        Binding("f4", "show_agents", "Agent", show=True),
+        Binding("f4", "show_agents", "Agents", show=True),
         Binding("ctrl+q", "quit", "退出", show=True, priority=True),
     ]
 
@@ -4934,14 +4980,15 @@ class AgentApp(App):
         edit_id = data.get("edit_id", "")
         name = data["name"]
         prompt = data["system_prompt"]
+        default_model = data.get("default_model", "")
         atg = data.get("allowed_tool_groups")
         ams = data.get("allowed_mcp_servers")
         ask = data.get("allowed_skills")
         if edit_id:
-            self.agent.update_agent(edit_id, name, prompt, atg, ams, ask)
+            self.agent.update_agent(edit_id, name, prompt, default_model, atg, ams, ask)
             self.notify(f"已更新 Agent: {name}", timeout=3)
         else:
-            self.agent.save_agent(name, prompt, atg, ams, ask)
+            self.agent.save_agent(name, prompt, default_model, atg, ams, ask)
             self.notify(f"已创建 Agent: {name}", timeout=3)
         self.query_one("#user-input", ChatInput).focus()
 
@@ -6495,11 +6542,11 @@ Agent 详情查看弹窗 — 含 system prompt + 工具 + MCP + Skills
 - `BINDINGS = [Binding('escape', 'dismiss_modal', '返回'), Binding('enter', 'dismiss_modal', '返回')]`
 
 ##### 📌 `class AgentEditScreen(ModalScreen[str])`
-*Line: 759*
+*Line: 765*
 
 **Docstring:**
 `````
-新建/编辑 Agent 弹窗（含工具组和 MCP 勾选）
+新建/编辑 Agent 弹窗（含工具组和 MCP 勾选 + 默认模型选择）
 `````
 
 **🔧 Constructor (`__init__`):**
@@ -6510,17 +6557,18 @@ Agent 详情查看弹窗 — 含 system prompt + 工具 + MCP + Skills
     - `edit_agent: dict = None`
     - `**kwargs`
 
-**Public Methods (4):**
+**Public Methods (5):**
 - `def compose(self) -> ComposeResult`
 - `def on_mount(self)`
 - `def on_button_pressed(self, event: Button.Pressed)`
+- `def on_option_list_option_selected(self, event: OptionList.OptionSelected)`
 - `def action_cancel(self)`
 
 **Class Variables (1):**
 - `BINDINGS = [Binding('escape', 'cancel', '取消')]`
 
 ##### 📌 `class ToolApprovalScreen(ModalScreen[bool])`
-*Line: 937*
+*Line: 972*
 
 **Docstring:**
 `````
@@ -7255,6 +7303,12 @@ class AgentContentScreen(ModalScreen):
             safe = line.replace("[", "\\[")
             lines.append(f"[#c0c0c0]{safe}[/#c0c0c0]")
 
+        default_model = a.get("default_model", "")
+        if default_model:
+            lines.append("")
+            lines.append(f"[bold #4d96ff]── 默认模型 ──[/bold #4d96ff]\n")
+            lines.append(f"  [bold #00d4aa]{default_model}[/bold #00d4aa]")
+
         if self.agent_core:
             lines.append("")
             lines.append("[bold #6bcb77]── 工具/函数 ──[/bold #6bcb77]\n")
@@ -7306,7 +7360,7 @@ class AgentContentScreen(ModalScreen):
 
 
 class AgentEditScreen(ModalScreen[str]):
-    """新建/编辑 Agent 弹窗（含工具组和 MCP 勾选）"""
+    """新建/编辑 Agent 弹窗（含工具组和 MCP 勾选 + 默认模型选择）"""
 
     BINDINGS = [
         Binding("escape", "cancel", "取消"),
@@ -7319,6 +7373,7 @@ class AgentEditScreen(ModalScreen[str]):
         self._all_group_names: list = []
         self._all_server_names: list = []
         self._all_skill_names: list = []
+        self._selected_model = ""
 
     def compose(self) -> ComposeResult:
         from textual.widgets._toggle_button import ToggleButton
@@ -7333,9 +7388,11 @@ class AgentEditScreen(ModalScreen[str]):
                 placeholder="如：代码审查专家",
                 id="agent-name-input",
             )
+            yield Static("[#c0c0c0]默认模型 [dim](↑↓ 选择)[/dim]:[/#c0c0c0]")
+            yield OptionList(id="agent-model-select")
             yield Static("[#c0c0c0]System Prompt:[/#c0c0c0]")
             from textual.widgets import TextArea
-            prompt = self.edit_agent["system_prompt"] if self.edit_agent else self.agent_core._base_prompt
+            prompt = self.edit_agent["system_prompt"] if self.edit_agent else ""
             yield TextArea(prompt, id="agent-prompt-input")
             yield Static("[#c0c0c0]工具组 [dim](✓ 启用)[/dim]:[/#c0c0c0]")
             yield self._build_groups_list()
@@ -7360,7 +7417,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_tool_groups") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         groups = self.agent_core.get_tool_groups()
         non_mcp = [g for g in groups if not g["name"].startswith("mcp__") and g["name"] != "(无分组)"]
         selections = []
@@ -7376,7 +7433,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_mcp_servers") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         servers = self.agent_core.get_mcp_status()
         selections = []
         for s in servers:
@@ -7392,7 +7449,7 @@ class AgentEditScreen(ModalScreen[str]):
         from textual.widgets import SelectionList
         from textual.widgets.selection_list import Selection
         raw = self.edit_agent.get("allowed_skills") if self.edit_agent else None
-        allowed = set(raw) if raw is not None else None
+        allowed = set(raw) if raw is not None else (set() if not self.edit_agent else None)
         all_skills = self.agent_core.skill_manager.get_all_skills()
         selections = []
         for s in all_skills:
@@ -7407,6 +7464,27 @@ class AgentEditScreen(ModalScreen[str]):
 
     def on_mount(self):
         self.query_one("#agent-name-input", Input).focus()
+        self._refresh_model_list()
+
+    def _refresh_model_list(self):
+        """刷新模型列表，选中当前 Agent 的 default_model 或当前模型"""
+        option_list = self.query_one("#agent-model-select", OptionList)
+        option_list.clear_options()
+        grouped = self.agent_core.get_models_grouped()
+        edit_model = self.edit_agent.get("default_model", "") if self.edit_agent else ""
+        current = edit_model or self.agent_core.get_model_name()
+        self._selected_model = current
+
+        for provider_name, models in grouped.items():
+            option_list.add_option(Option(
+                Text(f"── {provider_name} ──", style="dim #6b7394"), disabled=True
+            ))
+            for m in models:
+                if m.id == current:
+                    label = Text(f"  ▶ {m.id} ({m.name})", style="bold #00d4aa")
+                else:
+                    label = Text(f"    {m.id} ({m.name})", style="#c0c0c0")
+                option_list.add_option(Option(label, id=m.id))
 
     def _toggle_all(self, widget_id: str, all_names: list, select: bool):
         from textual.widgets import SelectionList
@@ -7473,11 +7551,16 @@ class AgentEditScreen(ModalScreen[str]):
             "edit_id": self.edit_agent["id"] if self.edit_agent else "",
             "name": name,
             "system_prompt": prompt,
+            "default_model": self._selected_model,
             "allowed_tool_groups": allowed_tool_groups,
             "allowed_mcp_servers": allowed_mcp_servers,
             "allowed_skills": allowed_skills,
         }, ensure_ascii=False)
         self.dismiss(result)
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected):
+        if event.option.id:
+            self._selected_model = event.option.id
 
     def action_cancel(self):
         self.dismiss("")

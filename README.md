@@ -6,6 +6,9 @@ nb_agent tui截图：
 截图是nb-agent接入serena这个mcp，变身为ai coding工具。
 ![alt text](1c93130f53f4cca8d290198dd426926a.png)
 
+截图是nb-agent创建的新闻agent：
+![alt text](image.png)
+
 ## 特性
 
 - **手写 ReAct 循环**：LLM → tool_calls → execute → feedback，无框架黑魔法
