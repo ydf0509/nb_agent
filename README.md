@@ -2,6 +2,10 @@
 
 **手写 ReAct Agent 框架 + 赛博朋克 TUI** — 不依赖 LangChain，用纯 Python 实现 LLM ↔ Tool 循环。
 
+nb_agent tui截图：
+截图是nb-agent接入serena这个mcp，变身为ai coding工具。
+![alt text](1c93130f53f4cca8d290198dd426926a.png)
+
 ## 特性
 
 - **手写 ReAct 循环**：LLM → tool_calls → execute → feedback，无框架黑魔法
@@ -204,6 +208,16 @@ nb_agent run "帮我分析代码性能"        # 非交互模式
 nb_agent sessions list                # 查看历史会话
 ```
 
+
+## Agent 管理功能
+
+支持创建多个 **Agent 预设**，每个 Agent 是独立的一套配置组合（System Prompt + 工具组开关 + MCP 开关 + Skills 开关 + 默认模型），让 AI 在不同场景下拥有不同的身份和能力边界。按 **F4** 管理。
+从不同的agent创建会话，适应不同的场景。
+例如你可以通过接入serena mcp后，专门创建一个agent，用于ai coding。
+通过接入 web search mcp后，专门创建一个agent，用于搜索互联网娱乐八卦新闻。
+通过接入 nbrag mcp后，专门创建一个agent，用于rag知识库检索。
+不同的agent绑定不同的System Prompt + 工具组开关 + MCP 开关 + Skills 开关，可以减少无关工具暴露给ai，节约很多tokens，提高ai的决策效率。
+
 ## TUI 快捷键
 
 | 快捷键 | 功能 |
@@ -284,7 +298,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 - 多agents管理(每个agent独立配置 提示词+ 工具组+ MCP Server+ Skills ，快速从不同的agent创建会话应对不同的场景)
 - **接入门槛极低**：`pip install nb_agent && nb_agent` 即可，集成到项目只需几行代码
 
-### nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
+### 3 nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
 
 **能。** 通过接入第三方编程 MCP，nb_agent 可以化身为终端编程助手。
 
@@ -322,6 +336,9 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 ### nb_agent 支不支持 RAG 知识库 呀？
 
 **支持。** nbrag 是一个独立的 Agentic RAG MCP Server（12 个工具），可导入代码、文档等任意文本，尤其对 Python 项目有奇效（AST 自动解析 class/function 作用域）。在 nb_agent 的 config.jsonc 中配置为 MCP Server 即可使用——MCP 暴露了工具描述和入参，AI 直接就能理解怎么用。如果想更进一步，把 `skills/nbrag-workflow/SKILL.md` 复制到 `.nb_agent/skills/nbrag-workflow/SKILL.md`，AI 会按最佳检索策略打组合拳。
+
+nbrag作为知识库，吊打传统native知识库， 所以nb_agent支持mcp，nbrag是rag mcp，所以nb_agent 支持知识库
+
 
 ## License
 
