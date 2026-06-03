@@ -10,6 +10,13 @@
           "name": "DeepSeek V3",
           "limit": { "context": 64000, "output": 8192 }
         },
+        // raw_model: 当配置 key 与 API 实际模型名不一致时使用 raw_model 指定真实模型名
+        // 若未设置 raw_model，则直接用 key 作为模型名请求接口
+        "ds-deepseek-v4-flash-200k": {
+          "name": "DeepSeek V4 Flash (官方直连)",
+          "raw_model": "deepseek-chat",
+          "limit": { "context": 200000, "output": 64000 }
+        },
         "deepseek-reasoner": {
           "name": "DeepSeek R1",
           "limit": { "context": 64000, "output": 8192 }

@@ -48,6 +48,11 @@ class MCPServerInfo:
         self.error = ""
         self._exit_stack: Optional[contextlib.AsyncExitStack] = None
 
+    async def reconnect(self, manager: "MCPManager", cfg: dict):
+        """断线后重连，复用旧的 exit_stack"""
+        await manager._cleanup_remote(self)
+        await manager.connect_server(self.name, cfg)
+
 
 class MCPManager:
     """管理多个 MCP Server 的连接和工具调用"""
@@ -334,30 +339,53 @@ class MCPManager:
             return f"[已拦截] MCP Server '{server_name}' 不在允许列表中"
 
         info = self.servers.get(server_name)
-        if not info or not info.connected or not info.session:
-            return f"[错误] MCP Server '{server_name}' 未连接"
+        if not info:
+            return f"[错误] MCP Server '{server_name}' 未找到"
 
-        try:
-            result = await asyncio.wait_for(
-                info.session.call_tool(tool_name, arguments=arguments),
-                timeout=60,
-            )
+        cfg = self._all_configs.get(server_name, {})
+        server_type = cfg.get("type", "local")
+        is_remote = server_type in ("sse", "streamableHttp", "streamable_http", "http")
 
-            texts = []
-            for item in result.content:
-                if hasattr(item, 'text'):
-                    texts.append(item.text)
-                elif hasattr(item, 'data'):
-                    texts.append(str(item.data))
+        for attempt in range(2):
+            if not info.connected or not info.session:
+                if attempt > 0:
+                    return f"[错误] MCP Server '{server_name}' 未连接"
+                if is_remote:
+                    logger_mcp.info(f"MCP [{server_name}] 断线重连...")
+                    await info.reconnect(self, cfg)
+                    info = self.servers.get(server_name) or info
+                    if not info.connected:
+                        return f"[错误] MCP Server '{server_name}' 重连失败: {info.error}"
                 else:
-                    texts.append(str(item))
+                    return f"[错误] MCP Server '{server_name}' 未连接"
 
-            return "\n".join(texts) if texts else "(空结果)"
+            try:
+                result = await asyncio.wait_for(
+                    info.session.call_tool(tool_name, arguments=arguments),
+                    timeout=60,
+                )
 
-        except asyncio.TimeoutError:
-            return f"[超时] MCP 工具 {tool_name} 执行超时(60s)"
-        except Exception as e:
-            return f"[错误] MCP 工具调用失败: {type(e).__name__}: {e}"
+                texts = []
+                for item in result.content:
+                    if hasattr(item, 'text'):
+                        texts.append(item.text)
+                    elif hasattr(item, 'data'):
+                        texts.append(str(item.data))
+                    else:
+                        texts.append(str(item))
+
+                return "\n".join(texts) if texts else "(空结果)"
+
+            except asyncio.TimeoutError:
+                return f"[超时] MCP 工具 {tool_name} 执行超时(60s)"
+            except Exception as e:
+                if attempt == 0 and is_remote:
+                    info.connected = False
+                    logger_mcp.warning(f"MCP [{server_name}] 连接断开 ({type(e).__name__})，尝试重连")
+                    continue
+                return f"[错误] MCP 工具调用失败: {type(e).__name__}: {e}"
+
+        return f"[错误] MCP 工具 {tool_name} 调用失败（重连后仍失败）"
 
     def is_mcp_tool(self, tool_name: str) -> bool:
         return tool_name.startswith("mcp__")

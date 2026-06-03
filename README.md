@@ -4,9 +4,11 @@
 
 nb_agent tui截图：
 截图是nb-agent接入serena这个mcp，变身为ai coding工具。
+自己吃自己的狗粮：自己打造nb-agent的终端 + ai coding智能体，使用deepseek-v4-flash 模型，修改nb-agent项目自身的源码，验证效果完美，一次即可改对代码。
 ![alt text](1c93130f53f4cca8d290198dd426926a.png)
 
-截图是nb-agent创建的新闻agent：
+截图是nb-agent创建的新闻agent，通过接入了open web search 这个mcp，用于搜索互联网娱乐八卦新闻：
+在tui终端提问:特朗普这个月做了什么呀？效果如下图
 ![alt text](image.png)
 
 ## 特性
@@ -49,6 +51,20 @@ nb_agent
 配置优先级：`CLI 参数 > 环境变量 > 项目级 ./config.jsonc > 全局 ~/.nb_agent/config.jsonc > 默认值`
 
 API Key 支持 `{env:DEEPSEEK_API_KEY}` 语法从环境变量读取。
+
+**raw_model** — 当配置的模型 key 与 API 实际要求的模型名不一致时，可通过 `raw_model` 指定真实模型名：
+
+```jsonc
+"models": {
+    "ds-deepseek-v4-flash-200k": {
+        "name": "DeepSeek V4 Flash (官方直连)",
+        "raw_model": "deepseek-chat",
+        "limit": { "context": 200000, "output": 64000 }
+    }
+}
+```
+
+若未设置 `raw_model`，则直接使用 key（如 `ds-deepseek-v4-flash-200k`）作为模型名请求接口。
 
 ## 三种扩展方式
 

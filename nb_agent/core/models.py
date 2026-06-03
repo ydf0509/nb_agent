@@ -33,6 +33,7 @@ class ModelInfo:
     api_key: str
     context_limit: int = 0
     output_limit: int = 0
+    raw_id: str = ""
 
 
 def load_models_from_config(config: dict) -> List[ModelInfo]:
@@ -54,5 +55,6 @@ def load_models_from_config(config: dict) -> List[ModelInfo]:
                 api_key=api_key,
                 context_limit=limit.get("context", 0),
                 output_limit=limit.get("output", 0),
+                raw_id=model_cfg.get("raw_model", ""),
             ))
     return models

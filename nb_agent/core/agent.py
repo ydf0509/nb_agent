@@ -241,7 +241,7 @@ class AgentCore:
             self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
-                    "model": self.current_model.id,
+                    "model": self.current_model.raw_id or self.current_model.id,
                     "messages": self._clean_messages_for_api(),
                 }
                 if openai_tools:
@@ -342,7 +342,7 @@ class AgentCore:
             self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
-                    "model": self.current_model.id,
+                    "model": self.current_model.raw_id or self.current_model.id,
                     "messages": self._clean_messages_for_api(),
                     "stream": True,
                 }
@@ -488,10 +488,16 @@ class AgentCore:
                 )
 
             except RETRYABLE_ERRORS as e:
-                yield f"\n[网络/超时错误（已重试 {MAX_RETRIES} 次）] {type(e).__name__}: {e}"
+                error_text = f"[网络/超时错误（已重试 {MAX_RETRIES} 次）] {type(e).__name__}: {e}"
+                self.messages.append({"role": "assistant", "content": error_text, "_model": self.current_model.id if self.current_model else ""})
+                self.session_store.save_message(self.session_id, "assistant", error_text)
+                yield f"\n{error_text}"
                 return
             except Exception as e:
-                yield f"\n[LLM 调用失败] {type(e).__name__}: {e}"
+                error_text = f"[LLM 调用失败] {type(e).__name__}: {e}"
+                self.messages.append({"role": "assistant", "content": error_text, "_model": self.current_model.id if self.current_model else ""})
+                self.session_store.save_message(self.session_id, "assistant", error_text)
+                yield f"\n{error_text}"
                 return
 
         yield "\n[警告] 工具调用轮次超限"
@@ -542,7 +548,7 @@ class AgentCore:
                 return
             client = self._get_client(self.current_model)
             resp = await client.chat.completions.create(
-                model=self.current_model.id,
+                model=self.current_model.raw_id or self.current_model.id,
                 messages=[
                     {"role": "system", "content": "你是一个标题生成器。根据用户的问题，生成一个不超过10个字的简短标题。只输出标题文字，不加引号或标点。"},
                     {"role": "user", "content": first_msg},

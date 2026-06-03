@@ -1,7 +1,7 @@
 ﻿
 # 🤖 AI 上下文阅读协议 (由 nb_ai_context 生成)
 
-> **此文档生成时间**：2026-06-01 19:01:26
+> **此文档生成时间**：2026-06-02 19:11:02
 > **系统指令**：你正在解析一份由工具 **`nb_ai_context`** 自动生成的**结构化项目快照**。
 > **文档性质**：这**不是**一份普通的面向人类的文档，而是专为 AI 大模型（LLM）设计的上下文数据流。它将项目文档、源代码和 AST 架构元数据进行了特殊的结构化合并，请开启"代码解析器"的心智模式。
 
@@ -279,7 +279,12 @@ Entry Points (not imported by other project files):
 
 nb_agent tui截图：
 截图是nb-agent接入serena这个mcp，变身为ai coding工具。
+自己吃自己的狗粮：自己打造nb-agent的终端 + ai coding智能体，使用deepseek-v4-flash 模型，修改nb-agent项目自身的源码，验证效果完美，一次即可改对代码。
 ![alt text](1c93130f53f4cca8d290198dd426926a.png)
+
+截图是nb-agent创建的新闻agent，通过接入了open web search 这个mcp，用于搜索互联网娱乐八卦新闻：
+在tui终端提问:特朗普这个月做了什么呀？效果如下图
+![alt text](image.png)
 
 ## 特性
 
@@ -2656,8 +2661,12 @@ MCP 客户端管理器 — 连接多个 MCP Server，统一管理工具
     - `name: str`
     - `session = None`
 
+**Public Methods (1):**
+- `async def reconnect(self, manager: 'MCPManager', cfg: dict)`
+  - *断线后重连，复用旧的 exit_stack*
+
 ##### 📌 `class MCPManager`
-*Line: 52*
+*Line: 57*
 
 **Docstring:**
 `````
@@ -2746,6 +2755,11 @@ class MCPServerInfo:
         self.connected = False
         self.error = ""
         self._exit_stack: Optional[contextlib.AsyncExitStack] = None
+
+    async def reconnect(self, manager: "MCPManager", cfg: dict):
+        """断线后重连，复用旧的 exit_stack"""
+        await manager._cleanup_remote(self)
+        await manager.connect_server(self.name, cfg)
 
 
 class MCPManager:
@@ -3033,30 +3047,53 @@ class MCPManager:
             return f"[已拦截] MCP Server '{server_name}' 不在允许列表中"
 
         info = self.servers.get(server_name)
-        if not info or not info.connected or not info.session:
-            return f"[错误] MCP Server '{server_name}' 未连接"
+        if not info:
+            return f"[错误] MCP Server '{server_name}' 未找到"
 
-        try:
-            result = await asyncio.wait_for(
-                info.session.call_tool(tool_name, arguments=arguments),
-                timeout=60,
-            )
+        cfg = self._all_configs.get(server_name, {})
+        server_type = cfg.get("type", "local")
+        is_remote = server_type in ("sse", "streamableHttp", "streamable_http", "http")
 
-            texts = []
-            for item in result.content:
-                if hasattr(item, 'text'):
-                    texts.append(item.text)
-                elif hasattr(item, 'data'):
-                    texts.append(str(item.data))
+        for attempt in range(2):
+            if not info.connected or not info.session:
+                if attempt > 0:
+                    return f"[错误] MCP Server '{server_name}' 未连接"
+                if is_remote:
+                    logger_mcp.info(f"MCP [{server_name}] 断线重连...")
+                    await info.reconnect(self, cfg)
+                    info = self.servers.get(server_name) or info
+                    if not info.connected:
+                        return f"[错误] MCP Server '{server_name}' 重连失败: {info.error}"
                 else:
-                    texts.append(str(item))
+                    return f"[错误] MCP Server '{server_name}' 未连接"
 
-            return "\n".join(texts) if texts else "(空结果)"
+            try:
+                result = await asyncio.wait_for(
+                    info.session.call_tool(tool_name, arguments=arguments),
+                    timeout=60,
+                )
 
-        except asyncio.TimeoutError:
-            return f"[超时] MCP 工具 {tool_name} 执行超时(60s)"
-        except Exception as e:
-            return f"[错误] MCP 工具调用失败: {type(e).__name__}: {e}"
+                texts = []
+                for item in result.content:
+                    if hasattr(item, 'text'):
+                        texts.append(item.text)
+                    elif hasattr(item, 'data'):
+                        texts.append(str(item.data))
+                    else:
+                        texts.append(str(item))
+
+                return "\n".join(texts) if texts else "(空结果)"
+
+            except asyncio.TimeoutError:
+                return f"[超时] MCP 工具 {tool_name} 执行超时(60s)"
+            except Exception as e:
+                if attempt == 0 and is_remote:
+                    info.connected = False
+                    logger_mcp.warning(f"MCP [{server_name}] 连接断开 ({type(e).__name__})，尝试重连")
+                    continue
+                return f"[错误] MCP 工具调用失败: {type(e).__name__}: {e}"
+
+        return f"[错误] MCP 工具 {tool_name} 调用失败（重连后仍失败）"
 
     def is_mcp_tool(self, tool_name: str) -> bool:
         return tool_name.startswith("mcp__")
