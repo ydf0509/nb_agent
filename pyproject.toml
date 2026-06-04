@@ -37,3 +37,6 @@ Repository = "https://github.com/ydf0509/nb_agent"
 
 [tool.setuptools.packages.find]
 include = ["nb_aegnt*"]
+
+[tool.setuptools.package-data]
+nb_agent = ["*.tcss", "**/*.tcss"]  
