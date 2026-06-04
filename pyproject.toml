@@ -40,7 +40,7 @@ Homepage = "https://github.com/ydf0509/nb_agent"
 Repository = "https://github.com/ydf0509/nb_agent"
 
 [tool.setuptools.packages.find]
-include = ["nb_aegnt*"]
+include = ["nb_agent*"]
 
 [tool.setuptools.package-data]
 nb_agent = ["*.tcss", "**/*.tcss"]  
