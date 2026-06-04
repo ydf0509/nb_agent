@@ -1,5 +1,5 @@
 [project]
-name = "nb_agent"
+name = "very_nb_agent"
 version = "0.2.0"
 description = "Handwritten ReAct Agent with TUI — Tools + MCP + Skills"
 readme = "README.md"

@@ -1,5 +1,7 @@
 # nb_agent
 
+nb_agent 是一个用户能基于此快速开发agent应用的框架，能快速扩展tools mcp skills，创建agents，自带tui终端。
+
 **手写 ReAct Agent 框架 + 赛博朋克 TUI** — 不依赖 LangChain，用纯 Python 实现 LLM ↔ Tool 循环。
 
 nb_agent tui截图：
@@ -23,8 +25,7 @@ nb_agent tui截图：
 ## 快速开始
 
 ```bash
-pip install nb_agent
-nb_agent
+pip install very_nb_agent   # 这里要注意是very_nb_agent，不是nb_agent，因为nb_agent 和别人的已有 nbagent名字太相似，被pypi拒绝了。
 ```
 
 或者在你的项目中集成：
@@ -305,7 +306,7 @@ nb_agent/
 
 ### 1. 什么是nb_agent
 
-ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 LLM ↔ Tool 循环，支持三种扩展方式：Python 函数工具（@tool 装饰器）、MCP 外部工具协议、Skills Markdown 指导手册(严格按照agentskills.io 规范)。`pip install nb_agent` 一条命令就能跑。
+ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 LLM ↔ Tool 循环，支持三种扩展方式：Python 函数工具（@tool 装饰器）、MCP 外部工具协议、Skills Markdown 指导手册(严格按照agentskills.io 规范)。`pip install very_nb_agent` 一条命令就能跑。
 
 ### 2. 用 nb_agent 有什么好处
 
@@ -315,7 +316,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 - **TUI 开箱即用**：流式输出 + 思考链可视 + 模型热切换 + Token 统计 
 - tool  mcp  skills 热启用(无需改配置文件或代码)
 - 多agents管理(每个agent独立配置 提示词+ 工具组+ MCP Server+ Skills ，快速从不同的agent创建会话应对不同的场景)
-- **接入门槛极低**：`pip install nb_agent && nb_agent` 即可，集成到项目只需几行代码
+- **接入门槛极低**：`pip install very_nb_agent && nb_agent` 即可，集成到项目只需几行代码
 
 ### 3 nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
 
@@ -337,7 +338,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
         "enabled": true
     },
     // nbrag（Agentic RAG MCP：文档/代码向量化导入、多轮智能检索）
-    // 安装: uv tool install nbrag  或  pip install nb_agentic_rag
+    // 安装: uv tool install nbrag  或  pip install nbrag
     // 支持 http（单独启动服务）和 local（子进程启动）两种方式
     "nbrag": {
         "type": "http",
