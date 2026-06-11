@@ -184,6 +184,48 @@ class AgentCore:
         except Exception as e:
             return f"工具执行失败: {type(e).__name__}: {e}"
 
+    async def _execute_tool_calls_batch(
+        self, parsed_calls: list,
+    ) -> dict:
+        """批量执行工具调用：无需审批的并发执行，需审批的串行执行。
+
+        Args:
+            parsed_calls: [(tc_id, func_name, func_args, record_or_None), ...]
+        Returns:
+            dict: {tc_id: result_str, ...}
+        """
+        if len(parsed_calls) <= 1:
+            results = {}
+            for tc_id, func_name, func_args, _ in parsed_calls:
+                results[tc_id] = await self._execute_with_approval(func_name, func_args)
+            return results
+
+        approval_calls = []
+        concurrent_calls = []
+        for item in parsed_calls:
+            tc_id, func_name, func_args, _ = item
+            if self.approval_engine.needs_approval(func_name, func_args):
+                approval_calls.append(item)
+            else:
+                concurrent_calls.append(item)
+
+        results: dict = {}
+
+        if concurrent_calls:
+            gather_results = await asyncio.gather(
+                *[self._execute_tool(fn, fa) for _, fn, fa, _ in concurrent_calls],
+                return_exceptions=True,
+            )
+            for (tc_id, _fn, _fa, _), result in zip(concurrent_calls, gather_results):
+                if isinstance(result, BaseException):
+                    result = f"工具执行失败: {type(result).__name__}: {result}"
+                results[tc_id] = result
+
+        for tc_id, func_name, func_args, _ in approval_calls:
+            results[tc_id] = await self._execute_with_approval(func_name, func_args)
+
+        return results
+
     def _clean_messages_for_api(self) -> list:
         return [
             {k: v for k, v in m.items() if not k.startswith('_')}
@@ -274,30 +316,33 @@ class AgentCore:
 
                 self.messages.append(self._build_assistant_msg(resp_msg))
 
+                parsed_calls = []
                 for tc in resp_msg.tool_calls:
                     func_name = tc.function.name
                     try:
                         func_args = json.loads(tc.function.arguments)
                     except json.JSONDecodeError:
                         func_args = {}
-
                     record = ToolCallRecord(name=func_name, args=func_args, status="running")
                     all_tool_calls.append(record)
                     self.last_turn_tool_calls += 1
-
                     if self.on_tool_call:
                         self.on_tool_call(record)
+                    parsed_calls.append((tc.id, func_name, func_args, record))
 
-                    result = await self._execute_with_approval(func_name, func_args)
+                results_map = await self._execute_tool_calls_batch(parsed_calls)
+
+                for tc_id, func_name, func_args, record in parsed_calls:
+                    result = results_map[tc_id]
                     record.result = result
-                    record.status = "error" if result.startswith(("[已拦截]", "[用户已拒绝", "错误:", "工具执行失败")) else "done"
-
+                    record.status = "error" if result.startswith(
+                        ("[已拦截]", "[用户已拒绝", "错误:", "工具执行失败")
+                    ) else "done"
                     if self.on_tool_call:
                         self.on_tool_call(record)
-
                     self.messages.append({
                         "role": "tool",
-                        "tool_call_id": tc.id,
+                        "tool_call_id": tc_id,
                         "content": result,
                     })
 
@@ -460,25 +505,27 @@ class AgentCore:
                     msg["reasoning_content"] = full_reasoning
                 self.messages.append(msg)
 
-                stream_tool_records = []
+                parsed_stream = []
                 for tc in assembled_tool_calls:
                     func_name = tc["function"]["name"]
                     try:
                         func_args = json.loads(tc["function"]["arguments"])
                     except json.JSONDecodeError:
                         func_args = {}
-
                     self.last_turn_tool_calls += 1
                     yield f"\n🔧 调用工具: {func_name}({json.dumps(func_args, ensure_ascii=False)})\n"
+                    parsed_stream.append((tc["id"], func_name, func_args, None))
 
-                    result = await self._execute_with_approval(func_name, func_args)
+                results_map = await self._execute_tool_calls_batch(parsed_stream)
+
+                stream_tool_records = []
+                for tc_id, func_name, func_args, _ in parsed_stream:
+                    result = results_map[tc_id]
                     stream_tool_records.append({"name": func_name, "args": func_args, "result": result})
-
                     yield f"📋 结果: {result}\n"
-
                     self.messages.append({
                         "role": "tool",
-                        "tool_call_id": tc["id"],
+                        "tool_call_id": tc_id,
                         "content": result,
                     })
 

@@ -1,7 +1,7 @@
 ﻿
 # 🤖 AI 上下文阅读协议 (由 nb_ai_context 生成)
 
-> **此文档生成时间**：2026-06-02 19:11:02
+> **此文档生成时间**：2026-06-05 20:18:37
 > **系统指令**：你正在解析一份由工具 **`nb_ai_context`** 自动生成的**结构化项目快照**。
 > **文档性质**：这**不是**一份普通的面向人类的文档，而是专为 AI 大模型（LLM）设计的上下文数据流。它将项目文档、源代码和 AST 架构元数据进行了特殊的结构化合并，请开启"代码解析器"的心智模式。
 
@@ -275,6 +275,8 @@ Entry Points (not imported by other project files):
 `````markdown
 # nb_agent
 
+nb_agent 是一个用户能基于此快速开发agent应用的框架，能快速扩展tools mcp skills，创建agents，自带tui终端。
+
 **手写 ReAct Agent 框架 + 赛博朋克 TUI** — 不依赖 LangChain，用纯 Python 实现 LLM ↔ Tool 循环。
 
 nb_agent tui截图：
@@ -298,8 +300,7 @@ nb_agent tui截图：
 ## 快速开始
 
 ```bash
-pip install nb_agent
-nb_agent
+pip install very_nb_agent   # 这里要注意是very_nb_agent，不是nb_agent，因为nb_agent 和别人的已有 nbagent名字太相似，被pypi拒绝了。
 ```
 
 或者在你的项目中集成：
@@ -326,6 +327,20 @@ nb_agent
 配置优先级：`CLI 参数 > 环境变量 > 项目级 ./config.jsonc > 全局 ~/.nb_agent/config.jsonc > 默认值`
 
 API Key 支持 `{env:DEEPSEEK_API_KEY}` 语法从环境变量读取。
+
+**raw_model** — 当配置的模型 key 与 API 实际要求的模型名不一致时，可通过 `raw_model` 指定真实模型名：
+
+```jsonc
+"models": {
+    "ds-deepseek-v4-flash-200k": {
+        "name": "DeepSeek V4 Flash (官方直连)",
+        "raw_model": "deepseek-chat",
+        "limit": { "context": 200000, "output": 64000 }
+    }
+}
+```
+
+若未设置 `raw_model`，则直接使用 key（如 `ds-deepseek-v4-flash-200k`）作为模型名请求接口。
 
 ## 三种扩展方式
 
@@ -566,7 +581,7 @@ nb_agent/
 
 ### 1. 什么是nb_agent
 
-ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 LLM ↔ Tool 循环，支持三种扩展方式：Python 函数工具（@tool 装饰器）、MCP 外部工具协议、Skills Markdown 指导手册(严格按照agentskills.io 规范)。`pip install nb_agent` 一条命令就能跑。
+ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 LLM ↔ Tool 循环，支持三种扩展方式：Python 函数工具（@tool 装饰器）、MCP 外部工具协议、Skills Markdown 指导手册(严格按照agentskills.io 规范)。`pip install very_nb_agent` 一条命令就能跑。
 
 ### 2. 用 nb_agent 有什么好处
 
@@ -576,7 +591,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
 - **TUI 开箱即用**：流式输出 + 思考链可视 + 模型热切换 + Token 统计 
 - tool  mcp  skills 热启用(无需改配置文件或代码)
 - 多agents管理(每个agent独立配置 提示词+ 工具组+ MCP Server+ Skills ，快速从不同的agent创建会话应对不同的场景)
-- **接入门槛极低**：`pip install nb_agent && nb_agent` 即可，集成到项目只需几行代码
+- **接入门槛极低**：`pip install very_nb_agent && nb_agent` 即可，集成到项目只需几行代码
 
 ### 3 nb_agent 能不能作为编程助手呀？（类似claude-code opencode cline 这种终端工具）
 
@@ -598,7 +613,7 @@ ReAct Agent 框架 + 赛博朋克 TUI。不依赖 LangChain，纯 Python 实现 
         "enabled": true
     },
     // nbrag（Agentic RAG MCP：文档/代码向量化导入、多轮智能检索）
-    // 安装: uv tool install nbrag  或  pip install nb_agentic_rag
+    // 安装: uv tool install nbrag  或  pip install nbrag
     // 支持 http（单独启动服务）和 local（子进程启动）两种方式
     "nbrag": {
         "type": "http",
@@ -635,9 +650,9 @@ MIT
 
 `````text
 [project]
-name = "nb_agent"
-version = "0.1.0"
-description = "Handwritten ReAct Agent with TUI — Tools + MCP + Skills"
+name = "very_nb_agent"
+version = "0.2.2"
+description = "Handwritten ReAct Agent with TUI — Tools + MCP + Skills，agent frame"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -663,10 +678,23 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.20"]
 [project.scripts]
 nb_agent = "nb_agent.main:main"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+#[build-system]
+#requires = ["hatchling"]
+#build-backend = "hatchling.build"
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/ydf0509/nb_agent"
+Repository = "https://github.com/ydf0509/nb_agent"
+
+[tool.setuptools.packages.find]
+include = ["nb_agent*"]
+
+[tool.setuptools.package-data]
+nb_agent = ["*.tcss", "**/*.tcss"]  
 `````
 
 --- **end of file: pyproject.toml** (project: nb_agent) --- 
@@ -1574,6 +1602,48 @@ class AgentCore:
         except Exception as e:
             return f"工具执行失败: {type(e).__name__}: {e}"
 
+    async def _execute_tool_calls_batch(
+        self, parsed_calls: list,
+    ) -> dict:
+        """批量执行工具调用：无需审批的并发执行，需审批的串行执行。
+
+        Args:
+            parsed_calls: [(tc_id, func_name, func_args, record_or_None), ...]
+        Returns:
+            dict: {tc_id: result_str, ...}
+        """
+        if len(parsed_calls) <= 1:
+            results = {}
+            for tc_id, func_name, func_args, _ in parsed_calls:
+                results[tc_id] = await self._execute_with_approval(func_name, func_args)
+            return results
+
+        approval_calls = []
+        concurrent_calls = []
+        for item in parsed_calls:
+            tc_id, func_name, func_args, _ = item
+            if self.approval_engine.needs_approval(func_name, func_args):
+                approval_calls.append(item)
+            else:
+                concurrent_calls.append(item)
+
+        results: dict = {}
+
+        if concurrent_calls:
+            gather_results = await asyncio.gather(
+                *[self._execute_tool(fn, fa) for _, fn, fa, _ in concurrent_calls],
+                return_exceptions=True,
+            )
+            for (tc_id, _fn, _fa, _), result in zip(concurrent_calls, gather_results):
+                if isinstance(result, BaseException):
+                    result = f"工具执行失败: {type(result).__name__}: {result}"
+                results[tc_id] = result
+
+        for tc_id, func_name, func_args, _ in approval_calls:
+            results[tc_id] = await self._execute_with_approval(func_name, func_args)
+
+        return results
+
     def _clean_messages_for_api(self) -> list:
         return [
             {k: v for k, v in m.items() if not k.startswith('_')}
@@ -1631,7 +1701,7 @@ class AgentCore:
             self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
-                    "model": self.current_model.id,
+                    "model": self.current_model.raw_id or self.current_model.id,
                     "messages": self._clean_messages_for_api(),
                 }
                 if openai_tools:
@@ -1664,30 +1734,33 @@ class AgentCore:
 
                 self.messages.append(self._build_assistant_msg(resp_msg))
 
+                parsed_calls = []
                 for tc in resp_msg.tool_calls:
                     func_name = tc.function.name
                     try:
                         func_args = json.loads(tc.function.arguments)
                     except json.JSONDecodeError:
                         func_args = {}
-
                     record = ToolCallRecord(name=func_name, args=func_args, status="running")
                     all_tool_calls.append(record)
                     self.last_turn_tool_calls += 1
-
                     if self.on_tool_call:
                         self.on_tool_call(record)
+                    parsed_calls.append((tc.id, func_name, func_args, record))
 
-                    result = await self._execute_with_approval(func_name, func_args)
+                results_map = await self._execute_tool_calls_batch(parsed_calls)
+
+                for tc_id, func_name, func_args, record in parsed_calls:
+                    result = results_map[tc_id]
                     record.result = result
-                    record.status = "error" if result.startswith(("[已拦截]", "[用户已拒绝", "错误:", "工具执行失败")) else "done"
-
+                    record.status = "error" if result.startswith(
+                        ("[已拦截]", "[用户已拒绝", "错误:", "工具执行失败")
+                    ) else "done"
                     if self.on_tool_call:
                         self.on_tool_call(record)
-
                     self.messages.append({
                         "role": "tool",
-                        "tool_call_id": tc.id,
+                        "tool_call_id": tc_id,
                         "content": result,
                     })
 
@@ -1732,7 +1805,7 @@ class AgentCore:
             self.last_turn_rounds = round_idx + 1
             try:
                 kwargs = {
-                    "model": self.current_model.id,
+                    "model": self.current_model.raw_id or self.current_model.id,
                     "messages": self._clean_messages_for_api(),
                     "stream": True,
                 }
@@ -1850,25 +1923,27 @@ class AgentCore:
                     msg["reasoning_content"] = full_reasoning
                 self.messages.append(msg)
 
-                stream_tool_records = []
+                parsed_stream = []
                 for tc in assembled_tool_calls:
                     func_name = tc["function"]["name"]
                     try:
                         func_args = json.loads(tc["function"]["arguments"])
                     except json.JSONDecodeError:
                         func_args = {}
-
                     self.last_turn_tool_calls += 1
                     yield f"\n🔧 调用工具: {func_name}({json.dumps(func_args, ensure_ascii=False)})\n"
+                    parsed_stream.append((tc["id"], func_name, func_args, None))
 
-                    result = await self._execute_with_approval(func_name, func_args)
+                results_map = await self._execute_tool_calls_batch(parsed_stream)
+
+                stream_tool_records = []
+                for tc_id, func_name, func_args, _ in parsed_stream:
+                    result = results_map[tc_id]
                     stream_tool_records.append({"name": func_name, "args": func_args, "result": result})
-
                     yield f"📋 结果: {result}\n"
-
                     self.messages.append({
                         "role": "tool",
-                        "tool_call_id": tc["id"],
+                        "tool_call_id": tc_id,
                         "content": result,
                     })
 
@@ -1878,10 +1953,16 @@ class AgentCore:
                 )
 
             except RETRYABLE_ERRORS as e:
-                yield f"\n[网络/超时错误（已重试 {MAX_RETRIES} 次）] {type(e).__name__}: {e}"
+                error_text = f"[网络/超时错误（已重试 {MAX_RETRIES} 次）] {type(e).__name__}: {e}"
+                self.messages.append({"role": "assistant", "content": error_text, "_model": self.current_model.id if self.current_model else ""})
+                self.session_store.save_message(self.session_id, "assistant", error_text)
+                yield f"\n{error_text}"
                 return
             except Exception as e:
-                yield f"\n[LLM 调用失败] {type(e).__name__}: {e}"
+                error_text = f"[LLM 调用失败] {type(e).__name__}: {e}"
+                self.messages.append({"role": "assistant", "content": error_text, "_model": self.current_model.id if self.current_model else ""})
+                self.session_store.save_message(self.session_id, "assistant", error_text)
+                yield f"\n{error_text}"
                 return
 
         yield "\n[警告] 工具调用轮次超限"
@@ -1932,7 +2013,7 @@ class AgentCore:
                 return
             client = self._get_client(self.current_model)
             resp = await client.chat.completions.create(
-                model=self.current_model.id,
+                model=self.current_model.raw_id or self.current_model.id,
                 messages=[
                     {"role": "system", "content": "你是一个标题生成器。根据用户的问题，生成一个不超过10个字的简短标题。只输出标题文字，不加引号或标点。"},
                     {"role": "user", "content": first_msg},
@@ -2321,7 +2402,7 @@ Agent 的回复
 模型信息
 `````
 
-**Class Variables (8):**
+**Class Variables (9):**
 - `id: str`
 - `name: str`
 - `provider: str`
@@ -2330,11 +2411,12 @@ Agent 的回复
 - `api_key: str`
 - `context_limit: int = 0`
 - `output_limit: int = 0`
+- `raw_id: str = ''`
 
 #### 🔧 Public Functions (1)
 
 - `def load_models_from_config(config: dict) -> List[ModelInfo]`
-  - *Line: 38*
+  - *Line: 39*
   - *从 config.jsonc 的 provider 节解析所有模型*
 
 
@@ -2376,6 +2458,7 @@ class ModelInfo:
     api_key: str
     context_limit: int = 0
     output_limit: int = 0
+    raw_id: str = ""
 
 
 def load_models_from_config(config: dict) -> List[ModelInfo]:
@@ -2397,6 +2480,7 @@ def load_models_from_config(config: dict) -> List[ModelInfo]:
                 api_key=api_key,
                 context_limit=limit.get("context", 0),
                 output_limit=limit.get("output", 0),
+                raw_id=model_cfg.get("raw_model", ""),
             ))
     return models
 

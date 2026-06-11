@@ -1,5 +1,24 @@
 # AI 重大更新记录
 
+## 2026-06-05: 工具调用并发执行（asyncio.gather）
+
+**变更**：当 LLM 一次返回多个 tool_calls 时，从串行逐个执行改为并发执行，大幅降低多工具场景延迟。
+
+**核心设计**：
+- 新增 `_execute_tool_calls_batch(parsed_calls)` 方法
+- 对不需要审批的工具使用 `asyncio.gather` 并发执行
+- 对需要审批的工具保持串行执行（审批弹窗不能并发弹）
+- 单个工具调用时直接走 `_execute_with_approval`，无额外开销
+- 使用 `return_exceptions=True` 确保单个工具异常不会影响其他工具
+- 执行完毕后按原始顺序组装 tool messages（OpenAI API 要求 id 匹配）
+
+**改造范围**：
+- `chat()` 非流式方法
+- `chat_stream()` 流式方法（先公布所有工具名 → 并发执行 → 按序输出结果）
+
+**涉及文件**：
+- `core/agent.py` — `_execute_tool_calls_batch` + `chat()` + `chat_stream()`
+
 ## 2026-05-28: 列名正面语义统一 + 三值语义修复
 
 **列名重命名（增强可读性）**：
